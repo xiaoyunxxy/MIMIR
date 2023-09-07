@@ -131,7 +131,7 @@ def main(args):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     dataset_train = datasets.CIFAR10(root=args.data_root, transform=transform_train, download=True, train=True)
 
-    if args.distributed:
+    if True: # args.distributed
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         sampler_train = torch.utils.data.DistributedSampler(
