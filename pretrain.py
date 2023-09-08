@@ -20,10 +20,9 @@ import timm.optim.optim_factory as optim_factory
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import dataset_loader, attack_loader
+from util.loader import build_dataset, attack_loader
 import models_mae
 from hsic import hsic_normalized_cca
-
 
 
 def get_args_parser():
@@ -123,13 +122,16 @@ def main(args):
 
     cudnn.benchmark = True
 
-    # simple augmentation
-    transform_train = transforms.Compose([
-            transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    dataset_train = datasets.CIFAR10(root=args.data_root, transform=transform_train, download=True, train=True)
+    if args.dataset=='imagenet':
+        # simple augmentation
+        transform_train = transforms.Compose([
+                transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        dataset_train = datasets.ImageFolder(os.path.join(args.data_path, 'train'), transform=transform_train)
+    else:
+        dataset_train = build_dataset(args, is_train=True)
 
     if True: # args.distributed
         num_tasks = misc.get_world_size()
@@ -309,11 +311,3 @@ if __name__ == '__main__':
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)
-
-
-
-
-
-
-
-
