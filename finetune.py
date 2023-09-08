@@ -23,11 +23,10 @@ from timm.utils import accuracy
 
 import util.lr_decay as lrd
 import util.misc as misc
-from util.datasets import build_dataset
 from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import dataset_loader, attack_loader
+from util.loader import build_dataset, attack_loader
 
 import models_vit
 
@@ -170,8 +169,9 @@ def main(args):
 
     cudnn.benchmark = True
 
-    dataset_train = build_dataset(is_train=True, args=args)
-    dataset_val = build_dataset(is_train=False, args=args)
+    dataset_train = build_dataset(args, is_train=True)
+    dataset_val = build_dataset(args, is_train=False)
+
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
