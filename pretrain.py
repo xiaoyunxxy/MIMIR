@@ -253,7 +253,13 @@ def train_one_epoch(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             if attack is not None:
+                ti1 = time.time()
                 adv_images = attack(samples, targets)
+                ti2 = time.time()
+                print('--- time: ', ti2-ti1)
+
+                # use the same mask for generating perturbation and calculate loss for optimization
+
                 loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
                 
                 if args.hsic_train:
@@ -291,7 +297,7 @@ def train_one_epoch(model: torch.nn.Module,
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-            """ We use epoch_1000x as the x-axis in tensorboard.
+            """
             This calibrates different curves when batch size changes.
             """
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
