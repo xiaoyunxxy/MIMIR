@@ -36,6 +36,7 @@ class PGD_MAE_FAST(Attack):
         self.steps = steps
         self.random_start = random_start
         self.supported_mode = ['default', 'targeted']
+        self.to_train = False
 
     def forward(self, images, labels):
         r"""
@@ -73,7 +74,13 @@ class PGD_MAE_FAST(Attack):
 
             adv_images = torch.clamp(images + delta, min=0, max=1).detach()
 
-        return adv_images
+        if self.to_train:
+            x = self.prepare_encoder(adv_images, ids_keep)
+            loss, _, _, _ = self.model.forward_for_pgd(x, ids_restore, mask, adv_images)
+            self.to_train = False
+            return loss, pred, _, latent
+        else:    
+            return adv_images
 
 
     def prepare_encoder(self, x, ids_keep):

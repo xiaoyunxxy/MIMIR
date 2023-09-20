@@ -253,14 +253,18 @@ def train_one_epoch(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             if attack is not None:
-                ti1 = time.time()
-                adv_images = attack(samples, targets)
-                ti2 = time.time()
-                print('--- time: ', ti2-ti1)
+                # ti1 = time.time()
+                # adv_images = attack(samples, targets)
+                # ti2 = time.time()
+                # print('--- time: ', ti2-ti1)
 
                 # use the same mask for generating perturbation and calculate loss for optimization
-
-                loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
+                if args.attack=='pgd_mae_fast':
+                    attack.to_train = True
+                    loss, pred, _, latent = attack(samples, targets)
+                else: 
+                    adv_images = attack(samples, targets)
+                    loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
                 
                 if args.hsic_train:
                     latent = latent.view(latent.shape[0], -1)
