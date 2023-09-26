@@ -21,6 +21,7 @@ import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
 from util.loader import build_dataset, attack_loader
+from util.data import load_data, load_set
 import models_mae
 from hsic import hsic_normalized_cca
 
@@ -65,6 +66,12 @@ def get_args_parser():
     parser.add_argument('--dataset', default='imagenet', type=str, help='dataset name')
     parser.add_argument('--data_root', default='../data', type=str,
                         help='dataset path')
+    parser.add_argument('--use_edm', action='store_true',
+                        help='Use edm data for training.')
+    parser.set_defaults(use_edm=False)
+    parser.add_argument('--unsup_fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
+    parser.add_argument('--aux_data_filename', type=str, help='Path to additional Tiny Images data.', 
+                        default='../data/edm/1m.npz')
 
     parser.add_argument('--output_dir', default='./experiment',
                         help='path where to save, empty for no saving')
@@ -87,7 +94,8 @@ def get_args_parser():
     # adversarial attack hyper parameter
     parser.add_argument('--attack', default='plain', type=str, help='attack type')
     parser.add_argument('--steps', default=10, type=int, help='adv. steps')
-    parser.add_argument('--eps', default=0.03, type=float, help='max norm')
+    parser.add_argument('--eps', default=8/255, type=float, help='max norm')
+    parser.add_argument('--alpha', default=2/255, type=float, help='adv. steps size')
 
     # hsic hyper parameter
     parser.add_argument('--hsic_xl', default=0.0, type=float, help='regular for hsic')
@@ -129,7 +137,11 @@ def main(args):
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-        dataset_train = datasets.ImageFolder(os.path.join(args.data_path, 'train'), transform=transform_train)
+        dataset_train = datasets.ImageFolder(os.path.join(args.data_root, 'train'), transform=transform_train)
+    elif args.use_edm:
+        args.dataset = args.dataset + 's'
+        dataset_train, dataset_test = load_set(args.dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
+        num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction)
     else:
         dataset_train = build_dataset(args, is_train=True)
 
@@ -149,13 +161,24 @@ def main(args):
     else:
         log_writer = None
 
-    data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        pin_memory=args.pin_mem,
-        drop_last=True,
-    )
+    if args.use_edm:
+        eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
+        data_loader_train, _ = load_data(dataset_train, dataset_test, 
+            dataset=args.dataset, batch_size=args.batch_size, 
+            batch_size_test=128, eff_batch_size=eff_batch_size, 
+            num_workers=args.num_workers, 
+            aux_data_filename=args.aux_data_filename, 
+            unsup_fraction=args.unsup_fraction,
+            num_replicas=num_tasks, rank=global_rank)
+        del dataset_test
+    else:
+        data_loader_train = torch.utils.data.DataLoader(
+            dataset_train, sampler=sampler_train,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_mem,
+            drop_last=True,
+        )
     
     # define the model
     model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
@@ -198,7 +221,10 @@ def main(args):
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
-            data_loader_train.sampler.set_epoch(epoch)
+            if args.use_edm:
+                data_loader_train.batch_sampler.set_epoch(epoch)
+            else:
+                data_loader_train.sampler.set_epoch(epoch)
         train_stats = train_one_epoch(
             model, data_loader_train,
             optimizer, device, epoch, loss_scaler,
@@ -258,13 +284,8 @@ def train_one_epoch(model: torch.nn.Module,
                 # ti2 = time.time()
                 # print('--- time: ', ti2-ti1)
 
-                # use the same mask for generating perturbation and calculate loss for optimization
-                if args.attack=='pgd_mae_fast':
-                    attack.to_train = True
-                    loss, pred, _, latent = attack(samples, targets)
-                else: 
-                    adv_images = attack(samples, targets)
-                    loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
+                adv_images = attack(samples, targets)
+                loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
                 
                 if args.hsic_train:
                     latent = latent.view(latent.shape[0], -1)

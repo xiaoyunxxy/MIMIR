@@ -69,6 +69,12 @@ def vit_ti_patch2_cifar10(**kwargs):
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def vit_ti_patch4_cifar10(**kwargs):
+    model = VisionTransformer(
+        img_size=32, patch_size=4, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 def vit_ti_patch4_tiny(**kwargs):
     model = VisionTransformer(
         img_size=64, patch_size=4, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4, qkv_bias=True,
@@ -81,12 +87,17 @@ def vit_ti_patch16(**kwargs):
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def vit_base_patch4(**kwargs):
+    model = VisionTransformer(
+        img_size=32, patch_size=4, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 def vit_base_patch16(**kwargs):
     model = VisionTransformer(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
-
 
 def vit_large_patch16(**kwargs):
     model = VisionTransformer(

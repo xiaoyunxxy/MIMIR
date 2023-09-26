@@ -4,7 +4,7 @@ import torch.nn as nn
 from .attack import Attack
 
 
-class PGD_MAE_FAST(Attack):
+class PGD_MAE(Attack):
     r"""
     PGD in the paper 'Towards Deep Learning Models Resistant to Adversarial Attacks'
     [https://arxiv.org/abs/1706.06083]
@@ -30,13 +30,12 @@ class PGD_MAE_FAST(Attack):
     """
 
     def __init__(self, model, device=None, eps=8/255, alpha=2/255, steps=10, random_start=True):
-        super().__init__('PGD_MAE_FAST', model, device)
+        super().__init__('PGD_MAE', model, device)
         self.eps = eps
         self.alpha = alpha
         self.steps = steps
         self.random_start = random_start
         self.supported_mode = ['default', 'targeted']
-        self.to_train = False
 
     def forward(self, images, labels):
         r"""
@@ -46,6 +45,10 @@ class PGD_MAE_FAST(Attack):
         images = images.clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
 
+        if self.targeted:
+            target_labels = self.get_target_label(images, labels)
+
+        loss = nn.CrossEntropyLoss()
         adv_images = images.clone().detach()
 
         if self.random_start:
@@ -54,15 +57,15 @@ class PGD_MAE_FAST(Attack):
                 torch.empty_like(adv_images).uniform_(-self.eps, self.eps)
             adv_images = torch.clamp(adv_images, min=0, max=1).detach()
 
-        for i in range(self.steps):
+        for _ in range(self.steps):
             adv_images.requires_grad = True
+            loss, _, _, _ = self.model(adv_images)
 
-            if i==0:
-                x, ids_restore, ids_keep, mask = self.prepare_encoder_random(adv_images)
-                loss, _, _, _ = self.model.forward_for_pgd(x, ids_restore, mask, adv_images)
-            else:
-                x = self.prepare_encoder(adv_images, ids_keep)
-                loss, _, _, _ = self.model.forward_for_pgd(x, ids_restore, mask, adv_images)
+            # Calculate loss
+            # if self.targeted:
+            #     cost = -loss(outputs, target_labels)
+            # else:
+            #     cost = loss(outputs, labels)
 
             # Update adversarial images
             grad = torch.autograd.grad(loss, adv_images,
@@ -71,49 +74,6 @@ class PGD_MAE_FAST(Attack):
             adv_images = adv_images.detach() + self.alpha*grad.sign()
             delta = torch.clamp(adv_images - images,
                                 min=-self.eps, max=self.eps)
-
             adv_images = torch.clamp(images + delta, min=0, max=1).detach()
 
-        if self.to_train:
-            x = self.prepare_encoder(adv_images, ids_keep)
-            loss, _, _, _ = self.model.forward_for_pgd(x, ids_restore, mask, adv_images)
-            self.to_train = False
-            return loss, pred, _, latent
-        else:    
-            return adv_images
-
-
-    def prepare_encoder(self, x, ids_keep):
-        # embed patches
-        x = self.model.patch_embed(x)
-
-        # add pos embed w/o cls token
-        x = x + self.model.pos_embed[:, 1:, :]
-
-        N, L, D = x.shape
-        # masking with previous random mask
-        x = torch.gather(x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
-
-        # append cls token
-        cls_token = self.model.cls_token + self.model.pos_embed[:, :1, :]
-        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
-
-        return x
-
-    def prepare_encoder_random(self, x, mask_ratio = 0.75):
-        # embed patches
-        x = self.model.patch_embed(x)
-
-        # add pos embed w/o cls token
-        x = x + self.model.pos_embed[:, 1:, :]
-
-        # masking: length -> length * mask_ratio
-        x, mask, ids_restore, ids_keep = self.model.random_masking(x, mask_ratio)
-
-        # append cls token
-        cls_token = self.model.cls_token + self.model.pos_embed[:, :1, :]
-        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
-
-        return x, ids_restore, ids_keep, mask
+        return adv_images

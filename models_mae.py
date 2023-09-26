@@ -267,6 +267,15 @@ def mae_vit_ti_patch16_dec128d2b(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def mae_vit_base_patch4_dec128d2b(**kwargs):
+    model = MaskedAutoencoderViT(
+        img_size=32, patch_size=4, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
+        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 def mae_vit_base_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
@@ -292,6 +301,7 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
 
 
 # set recommended archs
+mae_vit_base_cifar10=mae_vit_base_patch4_dec128d2b
 mae_vit_ti_cifar10 = mae_vit_ti_patch2_dec128d2b_cifar10
 mae_vit_ti_tiny = mae_vit_ti_patch4_dec128d2b_tiny
 mae_vit_ti_patch16 = mae_vit_ti_patch16_dec128d2b

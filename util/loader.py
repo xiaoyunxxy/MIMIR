@@ -41,7 +41,7 @@ def attack_loader(args, net):
 
     elif args.attack == "pgd_mae":
         return pgd_mae.PGD_MAE(model=net, eps=args.eps,
-                                alpha=2/255, steps=args.steps, random_start=True)
+                                alpha=args.alpha, steps=args.steps, random_start=True)
 
 
 def dataset_transforms(args, is_train):
@@ -51,27 +51,27 @@ def dataset_transforms(args, is_train):
 
     # Setting Dataset Required Parameters
     if args.dataset   == "svhn":
-        args.n_classes = 10
+        args.nb_classes = 10
         args.input_size= 32
         args.channel   = 3
     elif args.dataset == "cifar10":
-        args.n_classes = 10
+        args.nb_classes = 10
         args.input_size= 32
         args.channel   = 3
     elif args.dataset == "tiny":
-        args.n_classes = 200
+        args.nb_classes = 200
         args.input_size= 64
         args.channel   = 3
     elif args.dataset == "cifar100":
-        args.n_classes = 100
+        args.nb_classes = 100
         args.input_size= 32
         args.channel   = 3
     elif args.dataset == "imagenet":
-        args.n_classes = 1000
+        args.nb_classes = 1000
         args.input_size= 224
         args.channel   = 3
     elif args.dataset == "imagenette":
-        args.n_classes= 10
+        args.nb_classes= 10
         args.input_size= 224
         args.channel   = 3
 

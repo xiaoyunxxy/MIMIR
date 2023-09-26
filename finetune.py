@@ -10,6 +10,7 @@ import math
 
 
 import torch
+import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
@@ -27,6 +28,13 @@ from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
 from util.loader import build_dataset, attack_loader
+from trades import trades_loss
+from mart import mart_loss
+
+# edm data
+from util.data import get_data_info
+from util.data import load_data, load_set
+from util.data import SEMISUP_DATASETS
 
 import models_vit
 
@@ -114,6 +122,12 @@ def get_args_parser():
                         help='dataset path')
     parser.add_argument('--nb_classes', default=1000, type=int,
                         help='number of the classification types')
+    parser.add_argument('--use_edm', action='store_true',
+                        help='Use edm data for training.')
+    parser.set_defaults(use_edm=False)
+    parser.add_argument('--unsup-fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
+    parser.add_argument('--aux-data-filename', type=str, help='Path to additional Tiny Images data.', 
+                        default='../data/edm/1m.npz')
 
     parser.add_argument('--output_dir', default='./output_dir',
                         help='path where to save, empty for no saving')
@@ -141,7 +155,9 @@ def get_args_parser():
     parser.add_argument('--attack_train', default='plain', type=str, help='attack type')
     parser.add_argument('--attack', default='pgd', type=str, help='attack type')
     parser.add_argument('--steps', default=10, type=int, help='adv. steps')
-    parser.add_argument('--eps', default=0.03, type=float, help='max norm')
+    parser.add_argument('--eps', default=8/255, type=float, help='max norm')
+    parser.add_argument('--alpha', default=2/255, type=float, help='adv. steps size')
+    parser.add_argument('--trades_beta', default=6.0, type=float, help='trades loss beta')
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -169,7 +185,14 @@ def main(args):
 
     cudnn.benchmark = True
 
-    dataset_train = build_dataset(args, is_train=True)
+    if args.use_edm:
+        # args.dataset = args.dataset + 's'
+        simi_dataset = args.dataset + 's'
+        dataset_train, dataset_test = load_set(simi_dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
+        num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction)
+    else:
+        dataset_train = build_dataset(args, is_train=True)
+    
     dataset_val = build_dataset(args, is_train=False)
 
 
@@ -199,13 +222,24 @@ def main(args):
     else:
         log_writer = None
 
-    data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        pin_memory=args.pin_mem,
-        drop_last=True,
-    )
+    if args.use_edm:
+        eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
+        data_loader_train, _ = load_data(dataset_train, dataset_test, 
+            dataset=simi_dataset, batch_size=args.batch_size, 
+            batch_size_test=128, eff_batch_size=eff_batch_size, 
+            num_workers=args.num_workers, 
+            aux_data_filename=args.aux_data_filename, 
+            unsup_fraction=args.unsup_fraction,
+            num_replicas=num_tasks, rank=global_rank)
+        del dataset_test
+    else:
+        data_loader_train = torch.utils.data.DataLoader(
+            dataset_train, sampler=sampler_train,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_mem,
+            drop_last=True,
+        )
 
     data_loader_val = torch.utils.data.DataLoader(
         dataset_val, sampler=sampler_val,
@@ -223,7 +257,6 @@ def main(args):
             mixup_alpha=args.mixup, cutmix_alpha=args.cutmix, cutmix_minmax=args.cutmix_minmax,
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
-    
     model = models_vit.__dict__[args.model](
         num_classes=args.nb_classes,
         drop_path_rate=args.drop_path,
@@ -261,13 +294,8 @@ def main(args):
 
     model.to(device)
 
-    # define adversarial attack
-    if args.attack_train!='plain':
-        attack_train = attack_loader(args, model)
-        attack = attack_train
-    else:
-        attack_train = None
-        attack = attack_loader(args, model)
+    # define adversarial attack for eval
+    attack = attack_loader(args, model)
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -313,6 +341,7 @@ def main(args):
     if args.eval:
         test_stats = evaluate(data_loader_val, model, device)
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
+        test_stats_adv = evaluate_adv(attack, data_loader_val, model, device)
         exit(0)
 
     print(f"Start training for {args.epochs} epochs")
@@ -320,16 +349,19 @@ def main(args):
     max_accuracy = 0.0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
-            data_loader_train.sampler.set_epoch(epoch)
+            if args.use_edm:
+                data_loader_train.batch_sampler.set_epoch(epoch)
+            else:
+                data_loader_train.sampler.set_epoch(epoch)
         train_stats = train_one_epoch(
             model, criterion, data_loader_train,
             optimizer, device, epoch, loss_scaler,
             args.clip_grad, mixup_fn,
             log_writer=log_writer,
-            attack=attack_train,
+            attack_pgd=attack,
             args=args
         )
-        if args.output_dir:
+        if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs or epoch == 49):
             misc.save_model(
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
@@ -366,7 +398,7 @@ def main(args):
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0,
-                    mixup_fn: Optional[Mixup] = None, log_writer=None, attack=None,
+                    mixup_fn: Optional[Mixup] = None, log_writer=None, attack_pgd=None,
                     args=None):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
@@ -394,13 +426,24 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             samples, targets = mixup_fn(samples, targets)
 
         with torch.cuda.amp.autocast():
-            if attack is not None:
-                adv_samples = attack(samples, targets)
+            if args.attack_train=='pgd':
+                adv_samples = attack_pgd(samples, targets)
                 outputs = model(adv_samples)
                 loss = criterion(outputs, targets)
-            else:
+            elif args.attack_train=='trades':
+                loss = trades_loss(model, samples, targets, optimizer, step_size=args.alpha, 
+                                      epsilon=args.eps, perturb_steps=args.steps, 
+                                      beta=args.trades_beta, distance='linf-pgd')
+            elif args.attack_train=='mart':
+                loss = mart_loss(model, samples, targets, optimizer, step_size=args.alpha, 
+                                      epsilon=args.eps, perturb_steps=args.steps, 
+                                      beta=args.trades_beta, distance='linf-pgd')
+            elif args.attack_train=='plain':
+                # plain train
                 outputs = model(samples)
                 loss = criterion(outputs, targets)
+            else:
+                raise NotImplementedError("attack_train not implemented!") 
 
         loss_value = loss.item()
 
