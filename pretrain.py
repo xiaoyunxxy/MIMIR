@@ -7,6 +7,7 @@ import time
 import math
 from pathlib import Path
 from typing import Iterable
+from scipy.spatial.distance import pdist, squareform
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -23,7 +24,10 @@ import util.lr_sched as lr_sched
 from util.loader import build_dataset, attack_loader
 from util.data import load_data, load_set
 import models_mae
-from hsic import hsic_normalized_cca
+
+# MI methods
+from MI.hsic import hsic_normalized_cca
+from MI.DIB_MI import calculate_MI
 
 
 def get_args_parser():
@@ -98,11 +102,10 @@ def get_args_parser():
     parser.add_argument('--alpha', default=2/255, type=float, help='adv. steps size')
 
     # hsic hyper parameter
-    parser.add_argument('--hsic_xl', default=0.0, type=float, help='regular for hsic')
-    parser.add_argument('--hsic_xpl', default=0.0001, type=float, help='regular for hsic')
-    parser.add_argument('--hsic_train', action='store_true',
-                        help='Use hsic for training.')
-    parser.set_defaults(hsic_train=False)
+    parser.add_argument('--mi_xl', default=0.0, type=float, help='regular for mi.')
+    parser.add_argument('--mi_xpl', default=0.0001, type=float, help='regular for mi.')
+    parser.add_argument('--mi_train', default='plain', type=str, help='Use mutual information for training.')
+
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -287,7 +290,7 @@ def train_one_epoch(model: torch.nn.Module,
                 adv_images = attack(samples, targets)
                 loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
                 
-                if args.hsic_train:
+                if args.mi_train=='hsic':
                     latent = latent.view(latent.shape[0], -1)
 
                     h_data_adv = adv_images.view(adv_images.shape[0], -1)
@@ -296,8 +299,21 @@ def train_one_epoch(model: torch.nn.Module,
                     h_x_l = hsic_normalized_cca(latent, h_data, sigma=5)
                     h_xp_l = hsic_normalized_cca(latent, h_data_adv, sigma=5)
 
-                    hsic_loss = args.hsic_xpl * h_xp_l - args.hsic_xl * h_x_l
+                    hsic_loss = args.mi_xpl * h_xp_l - args.mi_xl * h_x_l
                     loss += hsic_loss
+                elif args.mi_train=='dib_mi':
+                    with torch.no_grad():
+                        Z = latent.view(latent.shape[0], -1)
+                        sigma_z = torch.sort(torch.cdist(Z,Z,p=2))[0][0:10].mean()
+
+                        inputs = samples.view(samples.shape[0], -1)
+                        sigma_input = torch.sort(torch.cdist(inputs, inputs,p=2))[0][0:10].mean()
+
+                    I_Xp_Z = calculate_MI(inputs, Z, s_x=sigma_input, s_y=sigma_z)
+                    dib_loss = args.mi_xpl * I_Xp_Z
+                    loss += dib_loss
+                else:
+                    pass
             else:
                 loss, _, _, _ = model(samples, mask_ratio=args.mask_ratio)
 
