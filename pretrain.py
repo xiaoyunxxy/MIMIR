@@ -101,9 +101,9 @@ def get_args_parser():
     parser.add_argument('--eps', default=8/255, type=float, help='max norm')
     parser.add_argument('--alpha', default=2/255, type=float, help='adv. steps size')
 
-    # hsic hyper parameter
+    # IB hyper parameter
     parser.add_argument('--mi_xl', default=0.0, type=float, help='regular for mi.')
-    parser.add_argument('--mi_xpl', default=0.0001, type=float, help='regular for mi.')
+    parser.add_argument('--mi_xpl', default=0.00001, type=float, help='regular for mi.')
     parser.add_argument('--mi_train', default='plain', type=str, help='Use mutual information for training.')
 
 
@@ -209,7 +209,7 @@ def main(args):
         attack = None
 
     if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], find_unused_parameters=True)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], find_unused_parameters=False)
         model_without_ddp = model.module
     
     # following timm: set wd as 0 for bias and norm layers
@@ -296,10 +296,10 @@ def train_one_epoch(model: torch.nn.Module,
                     h_data_adv = adv_images.view(adv_images.shape[0], -1)
                     h_data = samples.view(samples.shape[0], -1)
 
-                    h_x_l = hsic_normalized_cca(latent, h_data, sigma=5)
+                    # h_x_l = hsic_normalized_cca(latent, h_data, sigma=5)
                     h_xp_l = hsic_normalized_cca(latent, h_data_adv, sigma=5)
 
-                    hsic_loss = args.mi_xpl * h_xp_l - args.mi_xl * h_x_l
+                    hsic_loss = args.mi_xpl * h_xp_l
                     loss += hsic_loss
                 elif args.mi_train=='dib_mi':
                     with torch.no_grad():
@@ -344,6 +344,10 @@ def train_one_epoch(model: torch.nn.Module,
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.add_scalar('train_loss', loss_value_reduce, epoch_1000x)
             log_writer.add_scalar('lr', lr, epoch_1000x)
+            if args.mi_train=='hsic':
+                log_writer.add_scalar('mi', h_xp_l.item(), epoch_1000x)
+            elif args.mi_train=='dib_mi':
+                log_writer.add_scalar('mi', I_Xp_Z.item(), epoch_1000x)
 
 
     # gather the stats from all processes
