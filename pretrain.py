@@ -27,7 +27,7 @@ import models_mae
 
 # MI methods
 from MI.hsic import hsic_normalized_cca
-from MI.DIB_MI import calculate_MI
+from MI.DIB_MI import calculate_MI, HSIC
 
 
 def get_args_parser():
@@ -181,6 +181,7 @@ def main(args):
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
             drop_last=True,
+            persistent_workers=True
         )
     
     # define the model

@@ -32,6 +32,8 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
             del self.norm  # remove the original norm
 
+        self.record = False
+
 
     def forward_features(self, x):
         B = x.shape[0]
@@ -61,6 +63,12 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         # x = self.fc_norm(x)
         x = self.head_drop(x)
         return x if pre_logits else self.head(x)
+
+    def forward(self, x):
+        x_f = self.forward_features(x)
+        self.record = x_f
+        x = self.forward_head(x_f)
+        return x
 
 
 def vit_ti_patch2_cifar10(**kwargs):
@@ -96,6 +104,12 @@ def vit_base_patch4(**kwargs):
 def vit_base_patch16(**kwargs):
     model = VisionTransformer(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def vit_large_patch4(**kwargs):
+    model = VisionTransformer(
+        img_size=32, patch_size=4, embed_dim=1024, depth=24, num_heads=16, mlp_ratio=4, qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 

@@ -167,6 +167,11 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
+    # IB hyper parameter
+    parser.add_argument('--mi_xz', default=0.0001, type=float, help='regular for mi.')
+    parser.add_argument('--mi_yz', default=0.001, type=float, help='regular for mi.')
+    parser.add_argument('--mi_loss', default='plain', type=str, help='Use mutual information for training.')
+
     return parser
 
 
@@ -443,7 +448,25 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 outputs = model(samples)
                 loss = criterion(outputs, targets)
             else:
-                raise NotImplementedError("attack_train not implemented!") 
+                raise NotImplementedError("attack_train not implemented!")
+
+            if args.mi_loss=='dib_mi':
+                latent = model.record
+                with torch.no_grad():
+                    Z = latent.view(latent.shape[0], -1)
+                    sigma_z = torch.sort(torch.cdist(Z,Z,p=2))[0][0:10].mean()
+
+                    inputs = samples.view(samples.shape[0], -1)
+                    sigma_input = torch.sort(torch.cdist(inputs, inputs,p=2))[0][0:10].mean()
+
+                    outputs = outputs.view(outputs.shape[0], -1)
+                    sigma_output = torch.sort(torch.cdist(outputs, outputs,p=2))[0][0:10].mean()
+
+                IXZ = calculate_MI(inputs, Z, s_x=sigma_input, s_y=sigma_z)
+                IYZ = calculate_MI(outputs, Z, s_x=sigma_output, s_y=sigma_z)
+                mi_loss = args.mi_xz * IXZ - args.mi_yz * IYZ
+
+                loss += mi_loss
 
         loss_value = loss.item()
 
