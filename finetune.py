@@ -13,6 +13,7 @@ import torch
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
+import torchattacks
 
 import timm
 
@@ -21,13 +22,14 @@ from timm.models.layers import trunc_normal_
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 from timm.utils import accuracy
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 import util.lr_decay as lrd
 import util.misc as misc
 from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import build_dataset, attack_loader
+from util.loader import build_dataset, attack_loader, attacks_loader
 from trades import trades_loss
 from mart import mart_loss
 
@@ -162,7 +164,7 @@ def get_args_parser():
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
-    parser.add_argument('--local_rank', default=-1, type=int)
+    parser.add_argument('--local-rank', default=-1, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
@@ -244,6 +246,7 @@ def main(args):
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
             drop_last=True,
+            persistent_workers=True
         )
 
     data_loader_val = torch.utils.data.DataLoader(
@@ -251,7 +254,8 @@ def main(args):
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
-        drop_last=False
+        drop_last=False,
+        persistent_workers=True
     )
 
     mixup_fn = None
@@ -300,7 +304,16 @@ def main(args):
     model.to(device)
 
     # define adversarial attack for eval
-    attack = attack_loader(args, model)
+    if args.dataset == 'imagenet':
+        # only do normalization with mean and std for imagenet
+        mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
+        std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
+        upper_limit = ((1 - mu) / std)
+        lower_limit = ((0 - mu) / std)
+    else:
+        upper_limit = 1
+        lower_limit = 0
+    attack = attack_loader(args, model, upper_limit=upper_limit, lower_limit=lower_limit)
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -373,8 +386,14 @@ def main(args):
 
         test_stats = evaluate(data_loader_val, model, device)
         if epoch + 1 == args.epochs:
-            test_stats_adv = evaluate_adv(attack, data_loader_val, model, device)
-            
+            # define attacks for validation
+            args.steps = 20
+            at_pgd, at_cw, at_aa = attacks_loader(args, model, device)
+
+            test_stats_adv1 = evaluate_adv(at_pgd, data_loader_val, model, device)
+            test_stats_adv2 = evaluate_adv(at_cw, data_loader_val, model, device)
+            test_stats_adv3 = evaluate_adv(at_aa, data_loader_val, model, device)
+
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
         max_accuracy = max(max_accuracy, test_stats["acc1"])
         print(f'Max accuracy: {max_accuracy:.2f}%')

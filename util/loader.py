@@ -10,44 +10,46 @@ import torchvision.transforms as transforms
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.data import create_transform
 
-# torchattacks toolbox
 import torchattacks
-from pgd_mae import pgd_mae
+from pgd_mae import pgd_mae, pgd
+from autoattack import AutoAttack
 
 
-def attack_loader(args, net):
+def attack_loader(args, net, upper_limit=1, lower_limit=0):
     # Gradient Clamping based Attack
-    if args.attack == "fgsm":
-        return torchattacks.FGSM(model=net, eps=args.eps)
-
-    elif args.attack == "bim":
-        return torchattacks.BIM(model=net, eps=args.eps, alpha=2/255)
-
-    elif args.attack == "pgd":
-        return torchattacks.PGD(model=net, eps=args.eps,
-                                alpha=2/255, steps=args.steps, random_start=True)
+    if args.attack == "pgd":
+        return pgd.PGD(model=net, eps=args.eps,
+                                alpha=args.alpha, steps=args.steps, random_start=True,
+                                upper_limit=upper_limit, lower_limit=lower_limit)
 
     elif args.attack == "cw":
-        return torchattacks.CW(model=net, c=0.1, lr=0.1, steps=args.cwsteps)
+        return torchattacks.CW(model=net, steps=args.steps)
 
     elif args.attack == "auto":
-        return torchattacks.APGD(model=net, eps=args.eps)
-
-    elif args.attack == "fab":
-        return torchattacks.FAB(model=net, eps=args.eps, n_classes=args.n_classes)
-
-    elif args.attack == "nifgsm":
-        return torchattacks.NIFGSM(model=net, eps=args.eps, alpha=2/255, steps=args.steps, decay=1.0)
+        adversary = AutoAttack(model, norm='Linf', eps=args.eps, 
+            log_path=args.log_dir, version='standard', seed=args.seed)
+        return adversary
 
     elif args.attack == "pgd_mae":
         return pgd_mae.PGD_MAE(model=net, eps=args.eps,
+                                alpha=args.alpha, steps=args.steps, random_start=True,
+                                upper_limit=upper_limit, lower_limit=lower_limit)
+
+# load 3 attacks for validation
+def attacks_loader(args, net, device):
+    attack_pgd = torchattacks.PGD(net, eps=args.eps,
                                 alpha=args.alpha, steps=args.steps, random_start=True)
+
+    attack_cw = torchattacks.CW(net, steps=args.steps)
+
+    aa = torchattacks.AutoAttack(net, norm='Linf', eps=args.eps, 
+        version='standard', seed=args.seed)
+
+    return attack_pgd, attack_cw, aa
+
 
 
 def dataset_transforms(args, is_train):
-
-    args.mean=0.5
-    args.std=0.25
 
     # Setting Dataset Required Parameters
     if args.dataset   == "svhn":
@@ -106,7 +108,7 @@ def dataset_transforms(args, is_train):
         t.append(transforms.CenterCrop(args.input_size))
 
         t.append(transforms.ToTensor())
-        t.append(transforms.Normalize(mean, std))
+        # t.append(transforms.Normalize(mean, std))
         transform_test = transforms.Compose(t)
     else:
         transform_train = transforms.Compose(

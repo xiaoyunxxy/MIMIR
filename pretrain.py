@@ -3,6 +3,7 @@ import datetime
 import json
 import numpy as np
 import os
+import sys
 import time
 import math
 from pathlib import Path
@@ -17,6 +18,7 @@ import torchvision.datasets as datasets
 
 import timm
 import timm.optim.optim_factory as optim_factory
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
@@ -110,7 +112,7 @@ def get_args_parser():
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
-    parser.add_argument('--local_rank', default=-1, type=int)
+    parser.add_argument('--local-rank', default=-1, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
@@ -139,7 +141,7 @@ def main(args):
                 transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+                transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD)])
         dataset_train = datasets.ImageFolder(os.path.join(args.data_root, 'train'), transform=transform_train)
     elif args.use_edm:
         args.dataset = args.dataset + 's'
@@ -205,7 +207,17 @@ def main(args):
 
     # define adversarial attack
     if args.attack!='plain':
-        attack = attack_loader(args, model)
+        if args.dataset == 'imagenet':
+            mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
+            std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
+            upper_limit = ((1 - mu) / std)
+            lower_limit = ((0 - mu) / std)
+        else:
+            upper_limit = 1
+            lower_limit = 0
+        args.eps *= upper_limit - lower_limit
+        args.alpha *= upper_limit - lower_limit
+        attack = attack_loader(args, model, upper_limit=upper_limit, lower_limit=lower_limit)
     else:
         attack = None
 
@@ -283,11 +295,6 @@ def train_one_epoch(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             if attack is not None:
-                # ti1 = time.time()
-                # adv_images = attack(samples, targets)
-                # ti2 = time.time()
-                # print('--- time: ', ti2-ti1)
-
                 adv_images = attack(samples, targets)
                 loss, pred, _, latent = model(samples, mask_ratio=args.mask_ratio, adv_images=adv_images)
                 
@@ -301,7 +308,10 @@ def train_one_epoch(model: torch.nn.Module,
                     h_xp_l = hsic_normalized_cca(latent, h_data_adv, sigma=5)
 
                     hsic_loss = args.mi_xpl * h_xp_l
-                    loss += hsic_loss
+                    if math.isfinite(hsic_loss):
+                        loss += hsic_loss
+                    else:
+                        print("hsic is {}, skipping hisc loss".format(hsic_loss))
                 elif args.mi_train=='dib_mi':
                     with torch.no_grad():
                         Z = latent.view(latent.shape[0], -1)

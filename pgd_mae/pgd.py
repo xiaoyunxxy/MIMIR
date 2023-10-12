@@ -4,7 +4,7 @@ import torch.nn as nn
 from .attack import Attack
 
 
-class PGD_MAE(Attack):
+class PGD(Attack):
     r"""
     PGD in the paper 'Towards Deep Learning Models Resistant to Adversarial Attacks'
     [https://arxiv.org/abs/1706.06083]
@@ -29,13 +29,15 @@ class PGD_MAE(Attack):
 
     """
 
-    def __init__(self, model, device=None, eps=8/255, alpha=2/255, steps=10, random_start=True):
-        super().__init__('PGD_MAE', model, device)
+    def __init__(self, model, device=None, eps=8/255, alpha=2/255, steps=10, random_start=True, upper_limit=1, lower_limit=0):
+        super().__init__('PGD', model, device)
         self.eps = eps
         self.alpha = alpha
         self.steps = steps
         self.random_start = random_start
         self.supported_mode = ['default', 'targeted']
+        self.upper_limit = upper_limit
+        self.lower_limit = lower_limit
 
     def forward(self, images, labels):
         r"""
@@ -53,27 +55,32 @@ class PGD_MAE(Attack):
 
         if self.random_start:
             # Starting at a uniformly random point
-            adv_images = adv_images + \
-                torch.empty_like(adv_images).uniform_(-self.eps, self.eps)
-            adv_images = torch.clamp(adv_images, min=0, max=1).detach()
+            if torch.is_tensor(self.eps):
+                for i in range(len(self.eps)):
+                    adv_images[:,i,:,:] = adv_images[:,i,:,:] + \
+                        torch.empty_like(adv_images[:,i,:,:]).uniform_(-self.eps[i].item(), self.eps[i].item())
+            else:
+                adv_images = adv_images + \
+                    torch.empty_like(adv_images).uniform_(-self.eps, self.eps)
+            adv_images = torch.clamp(adv_images,  min=self.lower_limit, max=self.upper_limit).detach()
 
         for _ in range(self.steps):
             adv_images.requires_grad = True
-            loss, _, _, _ = self.model(adv_images)
+            outputs = self.get_logits(adv_images)
 
             # Calculate loss
-            # if self.targeted:
-            #     cost = -loss(outputs, target_labels)
-            # else:
-            #     cost = loss(outputs, labels)
+            if self.targeted:
+                cost = -loss(outputs, target_labels)
+            else:
+                cost = loss(outputs, labels)
 
             # Update adversarial images
-            grad = torch.autograd.grad(loss, adv_images,
+            grad = torch.autograd.grad(cost, adv_images,
                                        retain_graph=False, create_graph=False)[0]
 
             adv_images = adv_images.detach() + self.alpha*grad.sign()
             delta = torch.clamp(adv_images - images,
                                 min=-self.eps, max=self.eps)
-            adv_images = torch.clamp(images + delta, min=0, max=1).detach()
+            adv_images = torch.clamp(images + delta, min=self.lower_limit, max=self.upper_limit).detach()
 
         return adv_images
