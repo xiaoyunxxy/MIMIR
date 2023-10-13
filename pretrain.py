@@ -44,8 +44,10 @@ def get_args_parser():
     parser.add_argument('--model', default='mae_vit_ti_patch16', type=str, metavar='MODEL',
                         help='Name of model to train')
 
-    parser.add_argument('--input_size', default=32, type=int,
+    parser.add_argument('--input_size', default=224, type=int,
                         help='images input size')
+    parser.add_argument('--patch_size', default=16, type=int,
+                        help='images patch size')
 
     parser.add_argument('--mask_ratio', default=0.75, type=float,
                         help='Masking ratio (percentage of removed patches).')
@@ -187,8 +189,10 @@ def main(args):
         )
     
     # define the model
-    model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
-
+    model = models_mae.__dict__[args.model](
+        norm_pix_loss=args.norm_pix_loss,
+        img_size=args.input_size,
+        patch_size=args.patch_size)
     model.to(device)
 
     model_without_ddp = model
