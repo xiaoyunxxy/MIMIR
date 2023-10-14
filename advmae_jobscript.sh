@@ -6,20 +6,20 @@
 #SBATCH --mem=20G
 #SBATCH --gres=gpu:4
 #SBATCH --time=5-12:00:00
-#SBATCH --nodelist=cn114
+#SBATCH --nodelist=cn115
 #SBATCH --output=./slurm_log/my-experiment-%j.out
 #SBATCH --error=./slurm_log/my-experiment-%j.err
 #SBATCH --mail-user=xiaoyun.xu@ru.nl
 #SBATCH --mail-type=BEGIN,END,FAIL
 
-source /scratch/xxu/pytorch/bin/activate
+source /ceph/dis-ceph/xxu/pytorch/bin/activate
 cd /home/xxu/adv_mae
 
 
 # Hyper parameters
 num_gpu=4
-mae_model=mae_vit_base
-vit_model=vit_base
+mae_model=mae_vit_small
+vit_model=vit_small
 
 dataset=imagenet
 nb_classes=1000
@@ -35,7 +35,7 @@ ft_blr=0.001
 
 pre_output_dir=./experiment/${mae_model}_${dataset}_adv_fast_hsicpretrain/
 finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
-ft_output_dir=.experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain/
+ft_output_dir=./experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain/
 
 
 # Pretrain

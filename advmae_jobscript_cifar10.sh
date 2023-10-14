@@ -4,22 +4,21 @@
 #SBATCH --account=icis
 #SBATCH --qos=icis-preempt
 #SBATCH --mem=10G
-#SBATCH --gres=gpu:2
-#SBATCH --time=5:00:00
-#SBATCH --nodelist=cn115
+#SBATCH --gres=gpu:4
+#SBATCH --time=7:00:00
 #SBATCH --output=./slurm_log/my-experiment-%j.out
 #SBATCH --error=./slurm_log/my-experiment-%j.err
 #SBATCH --mail-user=xiaoyun.xu@ru.nl
 #SBATCH --mail-type=BEGIN,END,FAIL
 
-source /scratch/xxu/pytorch/bin/activate
+source /ceph/dis-ceph/xxu/pytorch/bin/activate
 cd /home/xxu/adv_mae
 
 
 # Hyper parameters
-num_gpu=2
-mae_model=mae_vit_ti
-vit_model=vit_ti
+num_gpu=4
+mae_model=mae_vit_small
+vit_model=vit_small
 
 dataset=cifar10
 nb_classes=10
@@ -27,15 +26,15 @@ patch_size=4
 input_size=32
 data_root=../data
 
-pre_batchsize=512
-ft_batchsize=64
+pre_batchsize=256
+ft_batchsize=128
 
 pre_blr=1.5e-4
-ft_blr=0.05
+ft_blr=0.01
 
 pre_output_dir=./experiment/${mae_model}_${dataset}_adv_fast_hsicpretrain/
 finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
-ft_output_dir=.experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain/
+ft_output_dir=./experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain/
 
 
 # Pretrain
