@@ -389,15 +389,6 @@ def main(args):
                 loss_scaler=loss_scaler, epoch=epoch)
 
         test_stats = evaluate(data_loader_val, model, device)
-        if epoch + 1 == args.epochs:
-            # define attacks for validation
-            args.steps = 20
-            at_pgd, at_cw, at_aa = attacks_loader(args, model, device)
-
-            test_stats_adv1 = evaluate_adv(at_pgd, data_loader_val, model, device)
-            test_stats_adv2 = evaluate_adv(at_cw, data_loader_val, model, device)
-            test_stats_adv3 = evaluate_adv(at_aa, data_loader_val, model, device)
-
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
         max_accuracy = max(max_accuracy, test_stats["acc1"])
         print(f'Max accuracy: {max_accuracy:.2f}%')
@@ -421,6 +412,16 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
+
+
+    # define attacks for adversarial validation
+    args.steps = 20
+    at_pgd, at_cw, at_aa = attacks_loader(args, model, device)
+
+    test_stats_adv1 = evaluate_adv(at_pgd, data_loader_val, model, device)
+    test_stats_adv2 = evaluate_adv(at_cw, data_loader_val, model, device)
+    test_stats_adv3 = evaluate_adv(at_aa, data_loader_val, model, device)
+
 
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
