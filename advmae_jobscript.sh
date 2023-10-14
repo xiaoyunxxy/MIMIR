@@ -3,10 +3,10 @@
 #SBATCH --partition=icis
 #SBATCH --account=icis
 #SBATCH --qos=icis-preempt
-#SBATCH --mem=20G
+#SBATCH --mem=256G
 #SBATCH --gres=gpu:4
+#SBATCH --cpus-per-task=96
 #SBATCH --time=5-12:00:00
-#SBATCH --nodelist=cn115
 #SBATCH --output=./slurm_log/my-experiment-%j.out
 #SBATCH --error=./slurm_log/my-experiment-%j.err
 #SBATCH --mail-user=xiaoyun.xu@ru.nl
@@ -27,7 +27,7 @@ patch_size=16
 input_size=224
 data_root=../data/imagenet
 
-pre_batchsize=256
+pre_batchsize=512
 ft_batchsize=128
 
 pre_blr=1.5e-4
