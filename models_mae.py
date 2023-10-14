@@ -279,6 +279,7 @@ def mae_vit_large_dec128d2b(**kwargs):
 
 # set recommended archs
 mae_vit_ti=mae_vit_ti_dec128d2b
+mae_vit_small=mae_vit_small_dec128d2b
 mae_vit_base=mae_vit_base_dec128d2b
 mae_vit_large=mae_vit_large_dec128d2b
 
