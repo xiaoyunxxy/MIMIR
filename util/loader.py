@@ -40,7 +40,7 @@ def attacks_loader(args, net, device):
     attack_pgd = torchattacks.PGD(net, eps=args.eps,
                                 alpha=args.alpha, steps=args.steps, random_start=True)
 
-    attack_cw = torchattacks.CW(net, steps=args.steps)
+    attack_cw = torchattacks.CW(net, c=0.1, lr=0.1, steps=args.steps)
 
     aa = torchattacks.AutoAttack(net, norm='Linf', eps=args.eps, 
         version='standard', seed=args.seed)
