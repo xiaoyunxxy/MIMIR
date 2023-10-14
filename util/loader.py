@@ -140,8 +140,8 @@ def build_dataset(args, is_train):
             return torchvision.datasets.ImageFolder(root=args.data_root+'/tiny-imagenet-200/train' if is_train \
                                     else args.data_root + '/tiny-imagenet-200/valid', transform=transform)
         elif args.dataset == "imagenet":
-            return torchvision.datasets.ImageFolder(root=args.data_root+'/imagenet/train' if is_train \
-                                    else args.data_root + '/imagenet/val', transform=transform)
+            return torchvision.datasets.ImageFolder(root=args.data_root+'/train' if is_train \
+                                    else args.data_root + '/val', transform=transform)
         elif args.dataset == "imagenette":
             return torchvision.datasets.ImageFolder(root=args.data_root+'/imagenette2/train' if is_train \
                                     else args.data_root + '/imagenette2/val', transform=transform)
