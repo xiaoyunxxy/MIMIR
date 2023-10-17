@@ -154,8 +154,17 @@ def hsic_normalized_cca(x, y, sigma, use_cuda=True, to_numpy=True, k_type_y='gau
 
     epsilon = 1E-5
     K_I = torch.eye(m)
-    Kxc_i = torch.inverse(Kxc + epsilon*m*K_I)
-    Kyc_i = torch.inverse(Kyc + epsilon*m*K_I)
+    try:
+        Kxc_i = torch.inverse(Kxc + epsilon*m*K_I)
+        Kyc_i = torch.inverse(Kyc + epsilon*m*K_I)
+    except torch._C._LinAlgError as error:
+        print('Singular matrix.', error)
+        # return 0 tensor to skip hsic loss
+        return torch.Tensor([0])
+    except:
+        print('Something else went wrong.')
+        # return 0 tensor to skip hsic loss
+        return torch.Tensor([0])
     Rx = (Kxc.mm(Kxc_i))
     Ry = (Kyc.mm(Kyc_i))
     Pxy = torch.sum(torch.mul(Rx, Ry.t()))

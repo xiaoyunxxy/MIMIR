@@ -258,6 +258,15 @@ def mae_vit_small_dec128d2b(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def mae_vit_small_ds_dec128d2b(**kwargs):
+    model = MaskedAutoencoderViT(
+        embed_dim=768, depth=8, num_heads=8,
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
+        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
+        mlp_ratio=3, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 def mae_vit_base_dec128d2b(**kwargs):
     model = MaskedAutoencoderViT(
         embed_dim=768, depth=12, num_heads=12,
@@ -278,6 +287,7 @@ def mae_vit_large_dec128d2b(**kwargs):
 
 
 # set recommended archs
+mae_vit_small_ds=mae_vit_small_ds_dec128d2b
 mae_vit_ti=mae_vit_ti_dec128d2b
 mae_vit_small=mae_vit_small_dec128d2b
 mae_vit_base=mae_vit_base_dec128d2b
