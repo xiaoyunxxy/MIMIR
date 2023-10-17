@@ -18,9 +18,8 @@ from autoattack import AutoAttack
 def attack_loader(args, net, upper_limit=1, lower_limit=0):
     # Gradient Clamping based Attack
     if args.attack == "pgd":
-        return pgd.PGD(model=net, eps=args.eps,
-                                alpha=args.alpha, steps=args.steps, random_start=True,
-                                upper_limit=upper_limit, lower_limit=lower_limit)
+        return torchattacks.PGD(net, eps=args.eps,
+                                alpha=args.alpha, steps=args.steps, random_start=True)
 
     elif args.attack == "cw":
         return torchattacks.CW(model=net, steps=args.steps)
@@ -80,20 +79,41 @@ def dataset_transforms(args, is_train):
     if args.dataset == "imagenet":
         mean = IMAGENET_DEFAULT_MEAN
         std = IMAGENET_DEFAULT_STD
+        # mean = [0., 0., 0.] 
+        # std = [1., 1., 1.]
+
+        hflip = 0.5
+        vflip = 0.0
+        scale = [0.08, 1.0]
+        ratio = [3./4., 4./3.]
+        crop_pct = None
 
         # train transform
         transform_train = create_transform(
-                input_size=args.input_size,
-                is_training=True,
-                color_jitter=args.color_jitter,
-                auto_augment=args.aa,
-                interpolation='bicubic',
-                re_prob=args.reprob,
-                re_mode=args.remode,
-                re_count=args.recount,
-                mean=mean,
-                std=std,
-            )
+            input_size=args.input_size,
+            is_training=True,
+            color_jitter=args.color_jitter,
+            auto_augment=args.aa,
+            interpolation='bicubic',
+            re_prob=args.reprob,
+            re_mode=args.remode,
+            re_count=args.recount,
+            mean=mean,
+            std=std,
+            scale=scale,
+            ratio=ratio,
+            hflip=hflip,
+            vflip=vflip,
+            crop_pct=crop_pct)
+        # transform_train = transforms.Compose([
+        #     transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+        #     transforms.RandomHorizontalFlip(),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD)])
+        # transform_train = transforms.Compose([
+        #     transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+        #     transforms.RandomHorizontalFlip(),
+        #     transforms.ToTensor()])
 
         # eval transform
         t = []
@@ -108,7 +128,7 @@ def dataset_transforms(args, is_train):
         t.append(transforms.CenterCrop(args.input_size))
 
         t.append(transforms.ToTensor())
-        # t.append(transforms.Normalize(mean, std))
+        t.append(transforms.Normalize(mean, std))
         transform_test = transforms.Compose(t)
     else:
         transform_train = transforms.Compose(
