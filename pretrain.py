@@ -312,7 +312,7 @@ def train_one_epoch(model: torch.nn.Module,
                     h_xp_l = hsic_normalized_cca(latent, h_data_adv, sigma=5)
 
                     hsic_loss = args.mi_xpl * h_xp_l
-                    if math.isfinite(hsic_loss):
+                    if math.isfinite(hsic_loss) and h_xp_l!=0:
                         loss += hsic_loss
                     else:
                         print("hsic is {}, skipping hisc loss".format(hsic_loss))
