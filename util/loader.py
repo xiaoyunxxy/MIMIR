@@ -13,6 +13,7 @@ from timm.data import create_transform
 import torchattacks
 from pgd_mae import pgd_mae, pgd
 from autoattack import AutoAttack
+from util.data import load_data, load_set
 
 
 def dataset_transforms(args, is_train):
@@ -46,45 +47,40 @@ def dataset_transforms(args, is_train):
     if args.dataset == "imagenet":
         mean = IMAGENET_DEFAULT_MEAN
         std = IMAGENET_DEFAULT_STD
-
-        # train transform
-        transform_train = create_transform(
-            input_size=args.input_size,
-            is_training=True,
-            color_jitter=args.color_jitter,
-            auto_augment=args.aa,
-            interpolation='bicubic',
-            re_prob=args.reprob,
-            re_mode=args.remode,
-            re_count=args.recount,
-            mean=mean,
-            std=std,
-        )
-
-        # eval transform
-        t = []
-        if args.input_size <= 224:
-            crop_pct = 224 / 256
-        else:
-            crop_pct = 1.0
-        size = int(args.input_size / crop_pct)
-        t.append(
-            transforms.Resize(size, interpolation=PIL.Image.BICUBIC),  # to maintain same ratio w.r.t. 224 images
-        )
-        t.append(transforms.CenterCrop(args.input_size))
-
-        t.append(transforms.ToTensor())
-        t.append(transforms.Normalize(mean, std))
-        transform_test = transforms.Compose(t)
     else:
-        transform_train = transforms.Compose(
-            [transforms.RandomCrop(args.input_size, padding=4),
-             transforms.RandomHorizontalFlip(),
-             transforms.ToTensor()]
-        )
-        transform_test = transforms.Compose(
-            [transforms.ToTensor()]
-        )
+        mean = (0.4914, 0.4822, 0.4465)
+        std = (0.2471, 0.2435, 0.2616)
+
+    # train transform
+    transform_train = create_transform(
+        input_size=args.input_size,
+        is_training=True,
+        color_jitter=args.color_jitter,
+        auto_augment=args.aa,
+        interpolation='bicubic',
+        re_prob=args.reprob,
+        re_mode=args.remode,
+        re_count=args.recount,
+        mean=mean,
+        std=std,
+    )
+
+    # eval transform
+    t = []
+    if args.input_size <= 224:
+        crop_pct = 224 / 256
+    else:
+        crop_pct = 1.0
+    size = int(args.input_size / crop_pct)
+    t.append(
+        transforms.Resize(size, interpolation=PIL.Image.BICUBIC),  # to maintain same ratio w.r.t. 224 images
+    )
+    t.append(transforms.CenterCrop(args.input_size))
+
+    t.append(transforms.ToTensor())
+    t.append(transforms.Normalize(mean, std))
+    transform_test = transforms.Compose(t)
+
 
     if is_train:
         return transform_train
@@ -111,3 +107,6 @@ def build_dataset(args, is_train):
         elif args.dataset == "imagenette":
             return torchvision.datasets.ImageFolder(root=args.data_root+'/imagenette2/train' if is_train \
                                     else args.data_root + '/imagenette2/val', transform=transform)
+        elif args.dataset == "cifar10s":
+            dataset_train, dataset_test = load_set(simi_dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
+            num_workers=args.num_workers, aux_data_filename=args.aux-data-filename, unsup_fraction=args.unsup_fraction, use_augmentation='randaugment', args=args)

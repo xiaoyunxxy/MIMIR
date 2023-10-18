@@ -136,8 +136,8 @@ def get_args_parser():
                         help='Use edm data for training.')
     parser.set_defaults(use_edm=False)
     parser.add_argument('--unsup-fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
-    parser.add_argument('--aux-data-filename', type=str, help='Path to additional Tiny Images data.', 
-                        default='../data/edm/1m.npz')
+    parser.add_argument('--aux_data_filename', type=str, help='Path to additional Tiny Images data.', 
+                        default='/data/xuxx/edm_data/1m.npz')
 
     parser.add_argument('--output_dir', default='./output_dir',
                         help='path where to save, empty for no saving')
@@ -201,12 +201,8 @@ def main(args):
     cudnn.benchmark = True
 
     if args.use_edm:
-        # args.dataset = args.dataset + 's'
-        simi_dataset = args.dataset + 's'
-        dataset_train, dataset_test = load_set(simi_dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
-        num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction)
-    else:
-        dataset_train = build_dataset(args, is_train=True)
+        args.dataset += 's'
+    dataset_train = build_dataset(args, is_train=True)
     dataset_val = build_dataset(args, is_train=False)
 
 

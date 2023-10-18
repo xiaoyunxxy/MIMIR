@@ -26,6 +26,7 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 from util.loader import build_dataset
+from util.data import load_data, load_set
 
 
 def warmup_dataloder(args, cur_epoch=0):
@@ -52,6 +53,7 @@ def warmup_dataloder(args, cur_epoch=0):
     elif cur_epoch == 6:
         args.aa = 'rand-m6-mstd0.5-inc1'
         args.mixup_prob=1.0
+        args.mixup=0.8
         args.cutmix = 1.0
         args.mixup_switch_prob = 0.1
     elif cur_epoch == 7:
@@ -89,14 +91,25 @@ def warmup_dataloder(args, cur_epoch=0):
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
 
-    data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        pin_memory=args.pin_mem,
-        drop_last=True,
-        persistent_workers=True
-    )
+    if args.use_edm:
+        eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
+        data_loader_train, _ = load_data(dataset_train, dataset_test, 
+            dataset=simi_dataset, batch_size=args.batch_size, 
+            batch_size_test=128, eff_batch_size=eff_batch_size, 
+            num_workers=args.num_workers, 
+            aux_data_filename=args.aux_data_filename, 
+            unsup_fraction=args.unsup_fraction,
+            num_replicas=num_tasks, rank=global_rank)
+        del dataset_test
+    else:
+        data_loader_train = torch.utils.data.DataLoader(
+            dataset_train, sampler=sampler_train,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_mem,
+            drop_last=True,
+            persistent_workers=True
+        )
 
     # mixup function warm up
     mixup_fn = None

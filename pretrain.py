@@ -82,7 +82,7 @@ def get_args_parser():
     parser.set_defaults(use_edm=False)
     parser.add_argument('--unsup_fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
     parser.add_argument('--aux_data_filename', type=str, help='Path to additional Tiny Images data.', 
-                        default='../data/edm/1m.npz')
+                        default='/data/xuxx/edm_data/1m.npz')
 
     parser.add_argument('--output_dir', default='./experiment',
                         help='path where to save, empty for no saving')
@@ -148,12 +148,20 @@ def main(args):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD)])
         dataset_train = datasets.ImageFolder(os.path.join(args.data_root, 'train'), transform=transform_train)
-    elif args.use_edm:
+    elif args.dataset=='cifar10' and args.use_edm:
         args.dataset = args.dataset + 's'
         dataset_train, dataset_test = load_set(args.dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
         num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction)
-    else:
-        dataset_train = build_dataset(args, is_train=True)
+    elif args.dataset=='cifar10':
+        # simple augmentation
+        mean = (0.4914, 0.4822, 0.4465)
+        std = (0.2471, 0.2435, 0.2616)
+        transform_train = transforms.Compose([
+                transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=mean, std=std)])
+        dataset_train = datasets.CIFAR10(root=args.data_root, transform=transform_train, download=True, train=True)
 
     if True: # args.distributed
         num_tasks = misc.get_world_size()
@@ -220,7 +228,7 @@ def main(args):
         std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
         upper_limit = ((1 - mu) / std)
         lower_limit = ((0 - mu) / std)
-    elif args.dataset=='cifar10':
+    elif args.dataset=='cifar10' or args.dataset=='cifar10s':
         cifar10_mean = (0.4914, 0.4822, 0.4465)
         cifar10_std = (0.2471, 0.2435, 0.2616)
         mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
