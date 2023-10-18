@@ -28,6 +28,7 @@ def calculate_gram_mat(x, sigma):
 
 def reyi_entropy(x,sigma):
     alpha = 1.01
+    # alpha = 2.0
     k = calculate_gram_mat(x,sigma)
     k = k/torch.trace(k) 
     eigv = torch.abs(torch.symeig(k, eigenvectors=True)[0])
@@ -38,6 +39,7 @@ def reyi_entropy(x,sigma):
 
 def joint_entropy(x,y,s_x,s_y):
     alpha = 1.01
+    # alpha = 2.0
     x = calculate_gram_mat(x,s_x)
     y = calculate_gram_mat(y,s_y)
     k = torch.mul(x,y)

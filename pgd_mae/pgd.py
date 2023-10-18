@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from timm.loss import SoftTargetCrossEntropy
 
 from .attack import Attack
 
@@ -38,6 +39,10 @@ class PGD(Attack):
         self.supported_mode = ['default', 'targeted']
         self.upper_limit = upper_limit
         self.lower_limit = lower_limit
+        self.mixup = False
+
+    def clamp(self, X, upper_limit, lower_limit):
+        return torch.max(torch.min(X, upper_limit), lower_limit)
 
     def forward(self, images, labels):
         r"""
@@ -50,7 +55,10 @@ class PGD(Attack):
         if self.targeted:
             target_labels = self.get_target_label(images, labels)
 
-        loss = nn.CrossEntropyLoss()
+        if self.mixup:
+            loss = SoftTargetCrossEntropy()
+        else:
+            loss = nn.CrossEntropyLoss()
         adv_images = images.clone().detach()
 
         if self.random_start:
@@ -58,11 +66,11 @@ class PGD(Attack):
             if torch.is_tensor(self.eps):
                 for i in range(len(self.eps)):
                     adv_images[:,i,:,:] = adv_images[:,i,:,:] + \
-                        torch.empty_like(adv_images[:,i,:,:]).uniform_(-self.eps[i].item(), self.eps[i].item())
+                        torch.empty_like(adv_images[:,i,:,:]).uniform_(-self.eps[i][0][0].item(), self.eps[i][0][0].item())
             else:
                 adv_images = adv_images + \
                     torch.empty_like(adv_images).uniform_(-self.eps, self.eps)
-            adv_images = torch.clamp(adv_images,  min=self.lower_limit, max=self.upper_limit).detach()
+            adv_images = self.clamp(adv_images, self.upper_limit, self.lower_limit).detach()
 
         for _ in range(self.steps):
             adv_images.requires_grad = True
@@ -79,8 +87,7 @@ class PGD(Attack):
                                        retain_graph=False, create_graph=False)[0]
 
             adv_images = adv_images.detach() + self.alpha*grad.sign()
-            delta = torch.clamp(adv_images - images,
-                                min=-self.eps, max=self.eps)
-            adv_images = torch.clamp(images + delta, min=self.lower_limit, max=self.upper_limit).detach()
+            delta = self.clamp(adv_images - images, -self.eps, self.eps)
+            adv_images = self.clamp(images + delta, self.upper_limit, self.lower_limit).detach()
 
         return adv_images

@@ -17,7 +17,6 @@ import torchattacks
 
 import timm
 
-# assert timm.__version__ == "0.3.2" # version check
 from timm.models.layers import trunc_normal_
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
@@ -29,9 +28,13 @@ import util.misc as misc
 from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import build_dataset, attack_loader, attacks_loader
+from util.loader import build_dataset
+from util.warmup_randaug import warmup_dataloder
+from util.aa_eval import evaluate_aa
+from util.cw_eval import evaluate_CW
 from trades import trades_loss
 from mart import mart_loss
+from pgd_mae import pgd
 
 # edm data
 from util.data import get_data_info
@@ -40,6 +43,7 @@ from util.data import SEMISUP_DATASETS
 
 import models_vit
 
+IMAGE_SCALE = 2.0/255
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
@@ -79,6 +83,8 @@ def get_args_parser():
 
     parser.add_argument('--warmup_epochs', type=int, default=5, metavar='N',
                         help='epochs to warmup LR')
+    parser.add_argument('--warmup_aa', action='store_true')
+    parser.set_defaults(warmup_aa=True)
 
     # Augmentation parameters
     parser.add_argument('--color_jitter', type=float, default=None, metavar='PCT',
@@ -159,8 +165,8 @@ def get_args_parser():
     parser.add_argument('--attack_train', default='plain', type=str, help='attack type')
     parser.add_argument('--attack', default='pgd', type=str, help='attack type')
     parser.add_argument('--steps', default=10, type=int, help='adv. steps')
-    parser.add_argument('--eps', default=8/255, type=float, help='max norm')
-    parser.add_argument('--alpha', default=2/255, type=float, help='adv. steps size')
+    parser.add_argument('--eps', default=16, type=float, help='max norm')
+    parser.add_argument('--alpha', default=4, type=float, help='adv. steps size')
     parser.add_argument('--trades_beta', default=6.0, type=float, help='trades loss beta')
 
     # distributed training parameters
@@ -201,7 +207,6 @@ def main(args):
         num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction)
     else:
         dataset_train = build_dataset(args, is_train=True)
-    
     dataset_val = build_dataset(args, is_train=False)
 
 
@@ -308,16 +313,29 @@ def main(args):
     model.to(device)
 
     # define adversarial attack for eval
-    if args.dataset == 'imagenet':
+    args.eps *= IMAGE_SCALE
+    if args.dataset=='imagenet':
         # only do normalization with mean and std for imagenet
         mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
         std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
         upper_limit = ((1 - mu) / std)
         lower_limit = ((0 - mu) / std)
+    elif args.dataset=='cifar10':
+        cifar10_mean = (0.4914, 0.4822, 0.4465)
+        cifar10_std = (0.2471, 0.2435, 0.2616)
+        mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
+        std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
+        upper_limit = ((1 - mu) / std)
+        lower_limit = ((0 - mu) / std)
     else:
-        upper_limit = 1
-        lower_limit = 0
-    attack = attack_loader(args, model, upper_limit=upper_limit, lower_limit=lower_limit)
+        print('check dataset option.')
+
+    args.eps /= std
+    args.alpha /= std
+
+    attack = pgd.PGD(model, eps=args.eps,
+        alpha=args.alpha, steps=args.steps, random_start=True,
+        upper_limit=upper_limit, lower_limit=lower_limit)
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -351,6 +369,7 @@ def main(args):
     if mixup_fn is not None:
         # smoothing is handled with mixup label transform
         criterion = SoftTargetCrossEntropy()
+        attack.mixup=True
     elif args.smoothing > 0.:
         criterion = LabelSmoothingCrossEntropy(smoothing=args.smoothing)
     else:
@@ -370,6 +389,10 @@ def main(args):
     start_time = time.time()
     max_accuracy = 0.0
     for epoch in range(args.start_epoch, args.epochs):
+        if epoch<=10 and args.attack_train!='plain' and args.warmup_aa:
+            # warm up data augmentation for adversarial training
+            data_loader_train, mixup_fn = warmup_dataloder(args, epoch)
+            
         if args.distributed:
             if args.use_edm:
                 data_loader_train.batch_sampler.set_epoch(epoch)
@@ -415,12 +438,23 @@ def main(args):
 
 
     # define attacks for adversarial validation
-    args.steps = 20
-    at_pgd, at_cw, at_aa = attacks_loader(args, model, device)
 
-    test_stats_adv1 = evaluate_adv(at_pgd, data_loader_val, model, device)
-    test_stats_adv2 = evaluate_adv(at_cw, data_loader_val, model, device)
-    test_stats_adv3 = evaluate_adv(at_aa, data_loader_val, model, device)
+    args.eval_iters = 20
+    args.eval_restarts = 1
+    cw_loss, cw_acc = evaluate_CW(args, model, data_loader_val, device)
+    logger.info('cw20 : loss {:.4f} acc {:.4f}'.format(cw_loss, cw_acc))
+
+    args.steps = 20
+    header = 'PGD^20 Test:'
+    pgd_loss, pgd_acc = evaluate_adv(args, model, data_loader_val, header)
+
+    args.steps = 100
+    header = 'PGD^100 Test:'
+    pgd_loss, pgd_acc = evaluate_adv(data_loader_val, model, device, header)
+
+    # auto attack eval
+    at_path = os.path.join(args.output_dir, 'eval'+'_autoattack.txt')
+    evaluate_aa(args, model, at_path, args.batch_size)
 
 
 
@@ -462,7 +496,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             elif args.attack_train=='trades':
                 loss = trades_loss(model, samples, targets, optimizer, step_size=args.alpha, 
                                       epsilon=args.eps, perturb_steps=args.steps, 
-                                      beta=args.trades_beta, distance='linf-pgd')
+                                      beta=args.trades_beta, distance='linf-pgd',
+                                      upper_limit=attack_pgd.upper_limit,
+                                      lower_limit=attack_pgd.lower_limit)
             elif args.attack_train=='mart':
                 loss = mart_loss(model, samples, targets, optimizer, step_size=args.alpha, 
                                       epsilon=args.eps, perturb_steps=args.steps, 
@@ -531,11 +567,10 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
-def evaluate_adv(attack, data_loader, model, device):
+def evaluate_adv(attack, data_loader, model, device, header='ADV Test:'):
     criterion = torch.nn.CrossEntropyLoss()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
-    header = 'ADV Test:'
 
     # switch to evaluation mode
     model.eval()

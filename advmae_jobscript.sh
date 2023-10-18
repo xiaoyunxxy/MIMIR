@@ -17,7 +17,7 @@ cd /home/xxu/adv_mae
 
 
 # Hyper parameters
-num_gpu=4
+num_gpu=2
 mae_model=mae_vit_ti
 vit_model=vit_ti
 
@@ -31,7 +31,7 @@ pre_batchsize=512
 ft_batchsize=256
 
 pre_blr=1.5e-4
-ft_blr=0.005
+ft_blr=0.0005
 
 pre_output_dir=./experiment/mae_imagenet_adv_fast_hsicpretrain1
 finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
@@ -62,22 +62,22 @@ echo 'fix'
 
 mkdir -p $ft_output_dir
 
-OMP_NUM_THREADS=6 python -m torch.distributed.launch --nproc_per_node=$num_gpu finetune.py \
+OMP_NUM_THREADS=2 python -m torch.distributed.launch --nproc_per_node=$num_gpu finetune.py \
  --finetune "$finetune_checkpoint" \
  --model "$vit_model" \
  --output_dir "$ft_output_dir" \
  --log_dir "$ft_output_dir" \
  --batch_size $ft_batchsize \
- --epochs 50 \
+ --epochs 100 --warmup_epochs 10 \
  --blr $ft_blr \
  --layer_decay 0.65 \
  --weight_decay 0.05 --drop_path 0.1 \
- --reprob 0.25 \
+ --reprob 0.0\
  --data_root $data_root \
  --dataset "$dataset" --nb_classes $nb_classes \
  --patch_size $patch_size --input_size $input_size \
- --attack_train trades --eps 0.0157 --alpha 0.0157 --steps 1 \
- --num_workers 10 > "$ft_output_dir/printlog" 2>&1
+ --attack_train pgd --eps 4 --alpha 4 --steps 1 \
+ --num_workers 16 
 
 
 

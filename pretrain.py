@@ -23,13 +23,16 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import build_dataset, attack_loader
+from util.loader import build_dataset
+from pgd_mae import pgd_mae
 from util.data import load_data, load_set
 import models_mae
 
 # MI methods
 from MI.hsic import hsic_normalized_cca
 from MI.DIB_MI import calculate_MI, HSIC
+
+IMAGE_SCALE = 2.0/255
 
 
 def get_args_parser():
@@ -102,8 +105,8 @@ def get_args_parser():
     # adversarial attack hyper parameter
     parser.add_argument('--attack', default='plain', type=str, help='attack type')
     parser.add_argument('--steps', default=10, type=int, help='adv. steps')
-    parser.add_argument('--eps', default=8/255, type=float, help='max norm')
-    parser.add_argument('--alpha', default=2/255, type=float, help='adv. steps size')
+    parser.add_argument('--eps', default=16, type=float, help='max norm')
+    parser.add_argument('--alpha', default=4, type=float, help='adv. steps size')
 
     # IB hyper parameter
     parser.add_argument('--mi_xl', default=0.0, type=float, help='regular for mi.')
@@ -210,18 +213,30 @@ def main(args):
     print("effective batch size: %d" % eff_batch_size)
 
     # define adversarial attack
+    args.eps *= IMAGE_SCALE
+    if args.dataset=='imagenet':
+        # only do normalization with mean and std for imagenet
+        mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
+        std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
+        upper_limit = ((1 - mu) / std)
+        lower_limit = ((0 - mu) / std)
+    elif args.dataset=='cifar10':
+        cifar10_mean = (0.4914, 0.4822, 0.4465)
+        cifar10_std = (0.2471, 0.2435, 0.2616)
+        mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
+        std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
+        upper_limit = ((1 - mu) / std)
+        lower_limit = ((0 - mu) / std)
+    else:
+        print('check dataset option.')
+
+    args.eps /= std
+    args.alpha /= std
+
     if args.attack!='plain':
-        if args.dataset == 'imagenet':
-            mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
-            std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
-            upper_limit = ((1 - mu) / std)
-            lower_limit = ((0 - mu) / std)
-        else:
-            upper_limit = 1
-            lower_limit = 0
-        args.eps *= upper_limit - lower_limit
-        args.alpha *= upper_limit - lower_limit
-        attack = attack_loader(args, model, upper_limit=upper_limit, lower_limit=lower_limit)
+        attack = pgd_mae.PGD_MAE(model=model, eps=args.eps,
+                                alpha=args.alpha, steps=args.steps, random_start=True,
+                                upper_limit=upper_limit, lower_limit=lower_limit)
     else:
         attack = None
 

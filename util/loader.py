@@ -15,39 +15,6 @@ from pgd_mae import pgd_mae, pgd
 from autoattack import AutoAttack
 
 
-def attack_loader(args, net, upper_limit=1, lower_limit=0):
-    # Gradient Clamping based Attack
-    if args.attack == "pgd":
-        return torchattacks.PGD(net, eps=args.eps,
-                                alpha=args.alpha, steps=args.steps, random_start=True)
-
-    elif args.attack == "cw":
-        return torchattacks.CW(model=net, steps=args.steps)
-
-    elif args.attack == "auto":
-        adversary = AutoAttack(model, norm='Linf', eps=args.eps, 
-            log_path=args.log_dir, version='standard', seed=args.seed)
-        return adversary
-
-    elif args.attack == "pgd_mae":
-        return pgd_mae.PGD_MAE(model=net, eps=args.eps,
-                                alpha=args.alpha, steps=args.steps, random_start=True,
-                                upper_limit=upper_limit, lower_limit=lower_limit)
-
-# load 3 attacks for validation
-def attacks_loader(args, net, device):
-    attack_pgd = torchattacks.PGD(net, eps=args.eps,
-                                alpha=args.alpha, steps=args.steps, random_start=True)
-
-    attack_cw = torchattacks.CW(net, c=0.1, lr=0.1, steps=args.steps)
-
-    aa = torchattacks.AutoAttack(net, norm='Linf', eps=args.eps, 
-        version='standard', seed=args.seed)
-
-    return attack_pgd, attack_cw, aa
-
-
-
 def dataset_transforms(args, is_train):
 
     # Setting Dataset Required Parameters
@@ -79,14 +46,6 @@ def dataset_transforms(args, is_train):
     if args.dataset == "imagenet":
         mean = IMAGENET_DEFAULT_MEAN
         std = IMAGENET_DEFAULT_STD
-        # mean = [0., 0., 0.] 
-        # std = [1., 1., 1.]
-
-        hflip = 0.5
-        vflip = 0.0
-        scale = [0.08, 1.0]
-        ratio = [3./4., 4./3.]
-        crop_pct = None
 
         # train transform
         transform_train = create_transform(
@@ -100,20 +59,7 @@ def dataset_transforms(args, is_train):
             re_count=args.recount,
             mean=mean,
             std=std,
-            scale=scale,
-            ratio=ratio,
-            hflip=hflip,
-            vflip=vflip,
-            crop_pct=crop_pct)
-        # transform_train = transforms.Compose([
-        #     transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
-        #     transforms.RandomHorizontalFlip(),
-        #     transforms.ToTensor(),
-        #     transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD)])
-        # transform_train = transforms.Compose([
-        #     transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
-        #     transforms.RandomHorizontalFlip(),
-        #     transforms.ToTensor()])
+        )
 
         # eval transform
         t = []
