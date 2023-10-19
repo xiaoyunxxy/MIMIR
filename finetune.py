@@ -201,8 +201,11 @@ def main(args):
     cudnn.benchmark = True
 
     if args.use_edm:
+        args.dataset_s = args.dataset + 's'
         args.dataset += 's'
-    dataset_train = build_dataset(args, is_train=True)
+        dataset_train, dataset_test = build_dataset(args, is_train=True)
+    else:
+        dataset_train = build_dataset(args, is_train=True)
     dataset_val = build_dataset(args, is_train=False)
 
 
@@ -235,7 +238,7 @@ def main(args):
     if args.use_edm:
         eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
         data_loader_train, _ = load_data(dataset_train, dataset_test, 
-            dataset=simi_dataset, batch_size=args.batch_size, 
+            dataset=args.dataset_s, batch_size=args.batch_size, 
             batch_size_test=128, eff_batch_size=eff_batch_size, 
             num_workers=args.num_workers, 
             aux_data_filename=args.aux_data_filename, 

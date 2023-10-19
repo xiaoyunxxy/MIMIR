@@ -108,5 +108,8 @@ def build_dataset(args, is_train):
             return torchvision.datasets.ImageFolder(root=args.data_root+'/imagenette2/train' if is_train \
                                     else args.data_root + '/imagenette2/val', transform=transform)
         elif args.dataset == "cifar10s":
-            dataset_train, dataset_test = load_set(simi_dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
-            num_workers=args.num_workers, aux_data_filename=args.aux-data-filename, unsup_fraction=args.unsup_fraction, use_augmentation='randaugment', args=args)
+            dataset_train, dataset_test = load_set(args.dataset_s, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
+            num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction, use_augmentation='randaugment', args=args)
+            args.dataset = "cifar10"
+            return dataset_train, dataset_test
+

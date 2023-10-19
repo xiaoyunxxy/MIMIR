@@ -78,7 +78,12 @@ def warmup_dataloder(args, cur_epoch=0):
         args.mixup_switch_prob = 0.5
 
     # dataset
-    dataset_train = build_dataset(args, is_train=True)
+    if args.use_edm:
+        args.dataset_s = args.dataset + 's'
+        args.dataset += 's'
+        dataset_train, dataset_test = build_dataset(args, is_train=True)
+    else:
+        dataset_train = build_dataset(args, is_train=True)
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
@@ -94,7 +99,7 @@ def warmup_dataloder(args, cur_epoch=0):
     if args.use_edm:
         eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
         data_loader_train, _ = load_data(dataset_train, dataset_test, 
-            dataset=simi_dataset, batch_size=args.batch_size, 
+            dataset=args.dataset_s, batch_size=args.batch_size, 
             batch_size_test=128, eff_batch_size=eff_batch_size, 
             num_workers=args.num_workers, 
             aux_data_filename=args.aux_data_filename, 
