@@ -84,7 +84,7 @@ def get_args_parser():
     parser.add_argument('--warmup_epochs', type=int, default=5, metavar='N',
                         help='epochs to warmup LR')
     parser.add_argument('--warmup_aa', action='store_true')
-    parser.set_defaults(warmup_aa=True)
+    parser.set_defaults(warmup_aa=False)
 
     # Augmentation parameters
     parser.add_argument('--color_jitter', type=float, default=None, metavar='PCT',
@@ -280,6 +280,9 @@ def main(args):
         patch_size=args.patch_size
     )
 
+    if args.warmup_aa:
+        print("Warmup random augmentation!")
+
     if args.finetune and not args.eval:
         checkpoint = torch.load(args.finetune, map_location='cpu')
 
@@ -438,11 +441,6 @@ def main(args):
 
     # define attacks for adversarial validation
 
-    args.eval_iters = 20
-    args.eval_restarts = 1
-    cw_loss, cw_acc = evaluate_CW(args, model, data_loader_val, device)
-    logger.info('cw20 : loss {:.4f} acc {:.4f}'.format(cw_loss, cw_acc))
-
     args.steps = 20
     header = 'PGD^20 Test:'
     pgd_loss, pgd_acc = evaluate_adv(args, model, data_loader_val, header)
@@ -450,6 +448,11 @@ def main(args):
     args.steps = 100
     header = 'PGD^100 Test:'
     pgd_loss, pgd_acc = evaluate_adv(data_loader_val, model, device, header)
+
+    args.eval_iters = 20
+    args.eval_restarts = 1
+    cw_loss, cw_acc = evaluate_CW(args, model, data_loader_val, device)
+    logger.info('cw20 : loss {:.4f} acc {:.4f}'.format(cw_loss, cw_acc))
 
     # auto attack eval
     at_path = os.path.join(args.output_dir, 'eval'+'_autoattack.txt')

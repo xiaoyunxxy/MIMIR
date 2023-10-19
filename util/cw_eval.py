@@ -47,7 +47,7 @@ def evaluate_CW(args, model, test_loader, device, eval_steps=None):
     n = 0
     model.eval()
     print('Evaluating with CW {} steps and {} restarts'.format(attack_iters, restarts))
-    if args.dataset=="cifar":
+    if args.dataset=="cifar10":
         mu = torch.tensor(cifar10_mean).view(3,1,1).to(deivce)
         std = torch.tensor(cifar10_std).view(3,1,1).to(deivce)
     if args.dataset=="imagenette" or args.dataset=="imagenet":
