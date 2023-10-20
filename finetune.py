@@ -468,7 +468,7 @@ def main(args):
 
     # auto attack eval
     print('eval auto attack.')
-    at_path = os.path.join(os.path.dirname(args.resume), 'eval'+'_autoattack.txt')
+    at_path = os.path.join(os.path.dirname(args.output_dir), 'eval'+'_autoattack.txt')
     evaluate_aa(args, model, at_path)
 
 

@@ -69,9 +69,6 @@ def dataset_transforms(args, is_train):
             re_count=args.recount,
             mean=mean,
             std=std)
-    elif args.aa!='noaug' and not args.use_normalize:
-        print('Rand augmentation need to use normalization.')
-        exit(0)
     else:
         if args.use_normalize:
             transform_train = transforms.Compose(
@@ -160,7 +157,7 @@ def build_dataset_pre(args):
     elif args.use_normalize and args.dataset=='cifar10' and args.use_edm:
         print('edm data should not use normalization.')
         exit(0)
-    elif args.dataset=='cifar10':
+    elif args.dataset=='cifar10' and not args.use_edm:
         # simple augmentation
         if args.use_normalize:
             transform_train = transforms.Compose([
