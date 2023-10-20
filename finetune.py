@@ -491,7 +491,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         print('log_dir: {}'.format(log_writer.log_dir))
 
 
-    print('PGD AT: steps {}, eps {:.4f}, alpha {:.4f}'.format(args.steps, args.eps[0][0][0].item(), args.alpha[0][0][0].item()))
     for data_iter_step, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         # we use a per iteration (instead of per epoch) lr scheduler
