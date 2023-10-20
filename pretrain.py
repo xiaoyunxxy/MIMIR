@@ -141,7 +141,10 @@ def main(args):
 
     cudnn.benchmark = True
 
-    dataset_train = build_dataset_pre(args)
+    if args.use_edm:
+        dataset_train, dataset_test = build_dataset_pre(args)
+    else:
+        dataset_train = build_dataset_pre(args)
 
     if True: # args.distributed
         num_tasks = misc.get_world_size()
@@ -219,6 +222,7 @@ def main(args):
             lower_limit = ((0 - mu) / std)
         else:
             print('check dataset option.')
+            exit(0)
 
         args.eps /= std
         args.alpha /= std

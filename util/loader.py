@@ -56,8 +56,8 @@ def dataset_transforms(args, is_train):
         print('checking dataset for mean and std!')
         exit(0)
 
-    if args.aa!='noaug':
-    # train transform
+    if args.aa!='noaug' and args.use_normalize:
+        # train transform
         transform_train = create_transform(
             input_size=args.input_size,
             is_training=True,
@@ -69,6 +69,9 @@ def dataset_transforms(args, is_train):
             re_count=args.recount,
             mean=mean,
             std=std)
+    elif args.aa!='noaug' and not args.use_normalize:
+        print('Rand augmentation need to use normalization.')
+        exit(0)
     else:
         if args.use_normalize:
             transform_train = transforms.Compose(
@@ -148,12 +151,15 @@ def build_dataset_pre(args):
                     transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor()])
-
-        dataset_train = datasets.ImageFolder(os.path.join(args.data_root, 'train'), transform=transform_train)
-    elif use_normalize==False and args.dataset=='cifar10' and args.use_edm:
+        dataset_train = torchvision.datasets.ImageFolder(os.path.join(args.data_root, 'train'), transform=transform_train)
+    elif args.use_normalize==False and args.dataset=='cifar10' and args.use_edm:
         args.dataset = args.dataset + 's'
         dataset_train, dataset_test = load_set(args.dataset, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
         num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction)
+        return dataset_train, dataset_test
+    elif args.use_normalize and args.dataset=='cifar10' and args.use_edm:
+        print('edm data should not use normalization.')
+        exit(0)
     elif args.dataset=='cifar10':
         # simple augmentation
         if args.use_normalize:
@@ -167,8 +173,7 @@ def build_dataset_pre(args):
                     transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor()])
-
-        dataset_train = datasets.CIFAR10(root=args.data_root, transform=transform_train, download=True, train=True)
+        dataset_train = torchvision.datasets.CIFAR10(root=args.data_root, transform=transform_train, download=True, train=True)
 
     return dataset_train
 
