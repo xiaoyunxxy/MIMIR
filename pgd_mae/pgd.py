@@ -39,10 +39,6 @@ class PGD(Attack):
         self.supported_mode = ['default', 'targeted']
         self.upper_limit = upper_limit
         self.lower_limit = lower_limit
-        self.mixup = False
-
-    def clamp(self, X, upper_limit, lower_limit):
-        return torch.max(torch.min(X, upper_limit), lower_limit)
 
     def forward(self, images, labels):
         r"""
@@ -55,10 +51,10 @@ class PGD(Attack):
         if self.targeted:
             target_labels = self.get_target_label(images, labels)
 
-        if self.mixup:
-            loss = SoftTargetCrossEntropy()
-        else:
-            loss = nn.CrossEntropyLoss()
+        # if self.mixup:
+        #     loss = SoftTargetCrossEntropy()
+        # else:
+        loss = nn.CrossEntropyLoss()
         adv_images = images.clone().detach()
 
         if self.random_start:
@@ -70,7 +66,7 @@ class PGD(Attack):
             else:
                 adv_images = adv_images + \
                     torch.empty_like(adv_images).uniform_(-self.eps, self.eps)
-            adv_images = self.clamp(adv_images, self.upper_limit, self.lower_limit).detach()
+            adv_images = torch.clamp(adv_images,  min=self.lower_limit, max=self.upper_limit).detach()
 
         for _ in range(self.steps):
             adv_images.requires_grad = True
@@ -87,7 +83,8 @@ class PGD(Attack):
                                        retain_graph=False, create_graph=False)[0]
 
             adv_images = adv_images.detach() + self.alpha*grad.sign()
-            delta = self.clamp(adv_images - images, -self.eps, self.eps)
-            adv_images = self.clamp(images + delta, self.upper_limit, self.lower_limit).detach()
+            delta = torch.clamp(adv_images - images,
+                                min=-self.eps, max=self.eps)
+            adv_images = torch.clamp(images + delta, min=self.lower_limit, max=self.upper_limit).detach()
 
         return adv_images

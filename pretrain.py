@@ -32,8 +32,6 @@ import models_mae
 from MI.hsic import hsic_normalized_cca
 from MI.DIB_MI import calculate_MI, HSIC
 
-IMAGE_SCALE = 2.0/255
-
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -104,9 +102,9 @@ def get_args_parser():
 
     # adversarial attack hyper parameter
     parser.add_argument('--attack', default='plain', type=str, help='attack type')
-    parser.add_argument('--steps', default=10, type=int, help='adv. steps')
-    parser.add_argument('--eps', default=16, type=float, help='max norm')
-    parser.add_argument('--alpha', default=4, type=float, help='adv. steps size')
+    parser.add_argument('--steps', default=1, type=int, help='adv. steps')
+    parser.add_argument('--eps', default=8, type=float, help='max norm')
+    parser.add_argument('--alpha', default=10, type=float, help='adv. steps size')
 
     # IB hyper parameter
     parser.add_argument('--mi_xl', default=0.0, type=float, help='regular for mi.')
@@ -221,7 +219,8 @@ def main(args):
     print("effective batch size: %d" % eff_batch_size)
 
     # define adversarial attack
-    args.eps *= IMAGE_SCALE
+    args.eps /= 255
+    args.alpha /= 255
     if args.dataset=='imagenet':
         # only do normalization with mean and std for imagenet
         mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)

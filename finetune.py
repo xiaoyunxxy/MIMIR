@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 import torchattacks
+from torchvision import datasets, transforms
 
 import timm
 
@@ -30,8 +31,7 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
 from util.loader import build_dataset
 from util.warmup_randaug import warmup_dataloder
-from util.aa_eval import evaluate_aa
-from util.cw_eval import evaluate_CW
+from util.aa_eval import evaluate_aa, evaluate_pgd, evaluate_cw
 from trades import trades_loss
 from mart import mart_loss
 from pgd_mae import pgd
@@ -43,7 +43,6 @@ from util.data import SEMISUP_DATASETS
 
 import models_vit
 
-IMAGE_SCALE = 2.0/255
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
@@ -165,8 +164,8 @@ def get_args_parser():
     parser.add_argument('--attack_train', default='plain', type=str, help='attack type')
     parser.add_argument('--attack', default='pgd', type=str, help='attack type')
     parser.add_argument('--steps', default=10, type=int, help='adv. steps')
-    parser.add_argument('--eps', default=16, type=float, help='max norm')
-    parser.add_argument('--alpha', default=4, type=float, help='adv. steps size')
+    parser.add_argument('--eps', default=8, type=float, help='max norm')
+    parser.add_argument('--alpha', default=2, type=float, help='adv. steps size')
     parser.add_argument('--trades_beta', default=6.0, type=float, help='trades loss beta')
 
     # distributed training parameters
@@ -315,13 +314,16 @@ def main(args):
     model.to(device)
 
     # define adversarial attack for eval
-    args.eps *= IMAGE_SCALE
+    args.eps /= 255
+    args.alpha /= 255
     if args.dataset=='imagenet':
         # only do normalization with mean and std for imagenet
         mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
         std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
         upper_limit = ((1 - mu) / std)
         lower_limit = ((0 - mu) / std)
+        args.upper_limit = upper_limit
+        args.lower_limit = lower_limit
     elif args.dataset=='cifar10':
         cifar10_mean = (0.4914, 0.4822, 0.4465)
         cifar10_std = (0.2471, 0.2435, 0.2616)
@@ -329,6 +331,8 @@ def main(args):
         std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
         upper_limit = ((1 - mu) / std)
         lower_limit = ((0 - mu) / std)
+        args.upper_limit = upper_limit
+        args.lower_limit = lower_limit
     else:
         print('check dataset option.')
 
@@ -371,7 +375,6 @@ def main(args):
     if mixup_fn is not None:
         # smoothing is handled with mixup label transform
         criterion = SoftTargetCrossEntropy()
-        attack.mixup=True
     elif args.smoothing > 0.:
         criterion = LabelSmoothingCrossEntropy(smoothing=args.smoothing)
     else:
@@ -384,7 +387,18 @@ def main(args):
     if args.eval:
         test_stats = evaluate(data_loader_val, model, device)
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
-        test_stats_adv = evaluate_adv(attack, data_loader_val, model, device)
+
+        # # pgd 
+        evaluate_pgd(args, model, device, eval_steps=20)
+
+        # # cw 
+        evaluate_cw(args, model, device, eval_steps=20)
+
+        # auto attack eval
+        print('eval auto attack.')
+        at_path = os.path.join(os.path.dirname(args.resume), 'eval'+'_autoattack.txt')
+        evaluate_aa(args, model, at_path)
+
         exit(0)
 
     print(f"Start training for {args.epochs} epochs")
@@ -439,25 +453,20 @@ def main(args):
     print('Training time {}'.format(total_time_str))
 
 
-    # define attacks for adversarial validation
+    # define attacks for adversarial evaluation
+    test_stats = evaluate(data_loader_val, model, device)
+    print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
 
-    args.steps = 20
-    header = 'PGD^20 Test:'
-    pgd_loss, pgd_acc = evaluate_adv(args, model, data_loader_val, header)
+    # # pgd 
+    evaluate_pgd(args, model, device, eval_steps=20)
 
-    args.steps = 100
-    header = 'PGD^100 Test:'
-    pgd_loss, pgd_acc = evaluate_adv(data_loader_val, model, device, header)
-
-    args.eval_iters = 20
-    args.eval_restarts = 1
-    cw_loss, cw_acc = evaluate_CW(args, model, data_loader_val, device)
-    logger.info('cw20 : loss {:.4f} acc {:.4f}'.format(cw_loss, cw_acc))
+    # # cw 
+    evaluate_cw(args, model, device, eval_steps=20)
 
     # auto attack eval
-    at_path = os.path.join(args.output_dir, 'eval'+'_autoattack.txt')
-    evaluate_aa(args, model, at_path, args.batch_size)
-
+    print('eval auto attack.')
+    at_path = os.path.join(os.path.dirname(args.resume), 'eval'+'_autoattack.txt')
+    evaluate_aa(args, model, at_path)
 
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
@@ -478,6 +487,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
 
+
+    print('PGD AT: steps {}, eps {:.4f}, alpha {:.4f}'.format(args.steps, args.eps[0][0][0].item(), args.alpha[0][0][0].item()))
     for data_iter_step, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         # we use a per iteration (instead of per epoch) lr scheduler

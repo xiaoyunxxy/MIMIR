@@ -51,19 +51,28 @@ def dataset_transforms(args, is_train):
         mean = (0.4914, 0.4822, 0.4465)
         std = (0.2471, 0.2435, 0.2616)
 
+    if args.aa!='noaug':
     # train transform
-    transform_train = create_transform(
-        input_size=args.input_size,
-        is_training=True,
-        color_jitter=args.color_jitter,
-        auto_augment=args.aa,
-        interpolation='bicubic',
-        re_prob=args.reprob,
-        re_mode=args.remode,
-        re_count=args.recount,
-        mean=mean,
-        std=std,
-    )
+        transform_train = create_transform(
+            input_size=args.input_size,
+            is_training=True,
+            color_jitter=args.color_jitter,
+            auto_augment=args.aa,
+            interpolation='bicubic',
+            re_prob=args.reprob,
+            re_mode=args.remode,
+            re_count=args.recount,
+            mean=mean,
+            std=std,
+        )
+        # print('Augmentation transform: ', transform_train)
+    else:
+        transform_train = transforms.Compose(
+            [transforms.RandomCrop(args.input_size, padding=4),
+             transforms.RandomHorizontalFlip(),
+             transforms.ToTensor(),
+             transforms.Normalize(mean, std)]
+        )
 
     # eval transform
     t = []
