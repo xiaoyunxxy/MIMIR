@@ -392,10 +392,10 @@ def main(args):
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
 
         # # pgd 
-        evaluate_pgd(args, model, device, eval_steps=20)
+        evaluate_pgd(args, model, device, eval_steps=args.steps)
 
         # # cw 
-        evaluate_cw(args, model, device, eval_steps=20)
+        evaluate_cw(args, model, device, eval_steps=args.steps)
 
         # auto attack eval
         print('eval auto attack.')
