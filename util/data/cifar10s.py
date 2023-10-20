@@ -12,11 +12,7 @@ from .semisup import SemiSupervisedSampler
 from .autoaugment import CIFAR10Policy
 from .idbh import IDBH
 from RandAugment import RandAugment # pip install git+https://github.com/ildoonet/pytorch-randaugment
-from timm.data import create_transform
 
-
-mean = (0.4914, 0.4822, 0.4465)
-std = (0.2471, 0.2435, 0.2616)
 
 class CutoutDefault(object):
     """
@@ -55,7 +51,7 @@ class MultiDataTransform(object):
 
 def load_cifar10s(data_dir, use_augmentation='base', use_consistency=False, aux_take_amount=None, 
                   aux_data_filename='/cluster/scratch/rarade/cifar10s/ti_500K_pseudo_labeled.pickle', 
-                  validation=False, args=None):
+                  validation=False):
     """
     Returns semisupervised CIFAR10 train, test datasets and dataloaders (with Tiny Images).
     Arguments:
@@ -71,10 +67,8 @@ def load_cifar10s(data_dir, use_augmentation='base', use_consistency=False, aux_
     if use_augmentation == 'none':
         train_transform = test_transform
     elif use_augmentation == 'base':
-        train_transform = transforms.Compose([transforms.RandomCrop(32, padding=4), 
-            transforms.RandomHorizontalFlip(0.5), 
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)])
+        train_transform = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(0.5), 
+                                              transforms.ToTensor()])
     elif use_augmentation == 'cutout':
         train_transform = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -82,7 +76,6 @@ def load_cifar10s(data_dir, use_augmentation='base', use_consistency=False, aux_
             transforms.ToTensor(),
         ])
         train_transform.transforms.append(CutoutDefault(18))
-        train_transform.transforms.append(transforms.Normalize(mean=mean, std=std))
     elif use_augmentation == 'autoaugment':
         train_transform = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -91,29 +84,14 @@ def load_cifar10s(data_dir, use_augmentation='base', use_consistency=False, aux_
             transforms.ToTensor(),
         ])
         train_transform.transforms.append(CutoutDefault(18))
-        train_transform.transforms.append(transforms.Normalize(mean=mean, std=std))
     elif use_augmentation == 'randaugment':
-        # train_transform = transforms.Compose([
-        #     transforms.RandomCrop(32, padding=4),
-        #     transforms.RandomHorizontalFlip(0.5),
-        #     transforms.ToTensor(),
-        # ])
-        # # Add RandAugment with N, M(hyperparameter), N=2, M=14 for wdn-28-10
-        # train_transform.transforms.insert(0, RandAugment(2, 14))
-        # train_transform.transforms.append(transforms.Normalize(mean=mean, std=std))
-
-        train_transform = create_transform(
-            input_size=args.input_size,
-            is_training=True,
-            color_jitter=args.color_jitter,
-            auto_augment=args.aa,
-            interpolation='bicubic',
-            re_prob=args.reprob,
-            re_mode=args.remode,
-            re_count=args.recount,
-            mean=mean,
-            std=std,
-        )
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(0.5),
+            transforms.ToTensor(),
+        ])
+        # Add RandAugment with N, M(hyperparameter), N=2, M=14 for wdn-28-10
+        train_transform.transforms.insert(0, RandAugment(2, 14))
     elif use_augmentation == 'idbh':
         train_transform = IDBH('cifar10-weak')
     

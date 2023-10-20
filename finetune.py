@@ -93,6 +93,10 @@ def get_args_parser():
     parser.add_argument('--smoothing', type=float, default=0.1,
                         help='Label smoothing (default: 0.1)')
 
+    parser.add_argument('--use_normalize', action='store_true',
+                        help='Use normalized data for training.')
+    parser.set_defaults(use_normalize=False)
+
     # * Random Erase params
     parser.add_argument('--reprob', type=float, default=0.25, metavar='PCT',
                         help='Random erase prob (default: 0.25)')
@@ -316,28 +320,27 @@ def main(args):
     # define adversarial attack for eval
     args.eps /= 255
     args.alpha /= 255
-    if args.dataset=='imagenet':
-        # only do normalization with mean and std for imagenet
-        mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
-        std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
-        upper_limit = ((1 - mu) / std)
-        lower_limit = ((0 - mu) / std)
-        args.upper_limit = upper_limit
-        args.lower_limit = lower_limit
-    elif args.dataset=='cifar10':
-        cifar10_mean = (0.4914, 0.4822, 0.4465)
-        cifar10_std = (0.2471, 0.2435, 0.2616)
-        mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
-        std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
-        upper_limit = ((1 - mu) / std)
-        lower_limit = ((0 - mu) / std)
-        args.upper_limit = upper_limit
-        args.lower_limit = lower_limit
-    else:
-        print('check dataset option.')
+    if args.use_normalize:
+        if args.dataset=='imagenet':
+            mu = torch.tensor(IMAGENET_DEFAULT_MEAN).view(3, 1, 1).to(device)
+            std = torch.tensor(IMAGENET_DEFAULT_STD).view(3, 1, 1).to(device)
+            upper_limit = ((1 - mu) / std)
+            lower_limit = ((0 - mu) / std)
+        elif args.dataset=='cifar10' or args.dataset=='cifar10s':
+            cifar10_mean = (0.4914, 0.4822, 0.4465)
+            cifar10_std = (0.2471, 0.2435, 0.2616)
+            mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
+            std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
+            upper_limit = ((1 - mu) / std)
+            lower_limit = ((0 - mu) / std)
+        else:
+            print('check dataset option.')
 
-    args.eps /= std
-    args.alpha /= std
+        args.eps /= std
+        args.alpha /= std
+    else:
+        upper_limit = 1.0
+        lower_limit = 0.0
 
     attack = pgd.PGD(model, eps=args.eps,
         alpha=args.alpha, steps=args.steps, random_start=True,
@@ -577,41 +580,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-
-def evaluate_adv(attack, data_loader, model, device, header='ADV Test:'):
-    criterion = torch.nn.CrossEntropyLoss()
-
-    metric_logger = misc.MetricLogger(delimiter="  ")
-
-    # switch to evaluation mode
-    model.eval()
-
-    for batch in metric_logger.log_every(data_loader, 10, header):
-        images = batch[0]
-        target = batch[-1]
-        images = images.to(device, non_blocking=True)
-        target = target.to(device, non_blocking=True)
-
-        adv_samples = attack(images, target)
-        
-        # compute output
-        with torch.cuda.amp.autocast():
-            output = model(adv_samples)
-            loss = criterion(output, target)
-
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
-
-        batch_size = images.shape[0]
-        metric_logger.update(loss=loss.item())
-        metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
-        metric_logger.meters['acc5'].update(acc5.item(), n=batch_size)
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
-    print('* Acc@1 {top1.global_avg:.3f} Acc@5 {top5.global_avg:.3f} loss {losses.global_avg:.3f}'
-          .format(top1=metric_logger.acc1, top5=metric_logger.acc5, losses=metric_logger.loss))
-
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
