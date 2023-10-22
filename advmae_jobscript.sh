@@ -54,6 +54,7 @@ OMP_NUM_THREADS=12 python -m torch.distributed.launch --master_port $m_port --np
 --output_dir "$pre_output_dir" --log_dir "$pre_output_dir" \
 --attack pgd_mae --steps 1 --eps 4 --alpha 4 \
 --num_workers 16 \
+--use_normalize \
 --mi_train hsic --mi_xpl 0.00001 > "$pre_output_dir/printlog" 2>&1
 
 
@@ -76,5 +77,6 @@ OMP_NUM_THREADS=12 python -m torch.distributed.launch --master_port $m_port --np
  --dataset "$dataset" --nb_classes $nb_classes \
  --patch_size $patch_size --input_size $input_size \
  --attack_train pgd --eps 4 --alpha 4 --steps 1 \
+ --use_normalize \
  --num_workers 16 > "$ft_output_dir/printlog"
 

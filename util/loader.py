@@ -89,7 +89,7 @@ def dataset_transforms(args, is_train):
     if args.dataset=="imagenet" or args.dataset=="imagenette":
         mean = IMAGENET_DEFAULT_MEAN
         std = IMAGENET_DEFAULT_STD
-    elif args.dataset=="cifar10":
+    elif args.dataset=="cifar10" or args.dataset=="cifar10s":
         mean = cifar10_mean
         std = cifar10_std
     else:
