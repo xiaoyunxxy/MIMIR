@@ -12,12 +12,12 @@
 #SBATCH --mail-user=xiaoyun.xu@ru.nl
 #SBATCH --mail-type=BEGIN,END,FAIL
 
-source /ceph/dis-ceph/xxu/pytorch/bin/activate
-cd /home/xxu/adv_mae
+# source /ceph/dis-ceph/xxu/pytorch/bin/activate
+# cd /home/xxu/adv_mae
 
 
 # Hyper parameters
-num_gpu=4
+num_gpu=1
 mae_model=mae_vit_small
 vit_model=vit_small
 
@@ -33,36 +33,40 @@ ft_batchsize=128
 pre_blr=1.5e-4
 ft_blr=0.05
 
-pre_output_dir=./experiment/${mae_model}_${dataset}_adv_fast_hsicpretrain_nor
-finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
-ft_output_dir=./experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain_nor
+# pre_output_dir=./experiment/${mae_model}_${dataset}_adv_fast_hsicpretrain_nor
+# finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
+# ft_output_dir=./experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain_nor
+
+pre_output_dir=./experiment/test_pre
+finetune_checkpoint=$pre_output_dir/checkpoint-0.pth
+ft_output_dir=./experiment/test_ft
 
 m_port=1234
 
 # Pretrain
 
-mkdir -p $pre_output_dir
+# mkdir -p $pre_output_dir
 
-python -m torch.distributed.launch --master_port $m_port --nproc_per_node=$num_gpu pretrain.py \
---batch_size $pre_batchsize \
---model $mae_model \
---norm_pix_loss --mask_ratio 0.75 \
---epochs 800 --warmup_epochs 40 \
---blr $pre_blr --weight_decay 0.05 \
---dataset "$dataset" --patch_size $patch_size \
---data_root $data_root --input_size $input_size \
---output_dir "$pre_output_dir" --log_dir "$pre_output_dir" \
---attack pgd_mae --steps 1 --eps 10 --alpha 8 \
---num_workers 16 \
- --use_normalize \
---mi_train hsic --mi_xpl 0.00001 > "${pre_output_dir}/printlog" 2>&1
+# CUDA_VISIBLE_DEVICES=0 python pretrain.py \
+# --batch_size $pre_batchsize \
+# --model $mae_model \
+# --norm_pix_loss --mask_ratio 0.75 \
+# --epochs 800 --warmup_epochs 40 \
+# --blr $pre_blr --weight_decay 0.05 \
+# --dataset "$dataset" --patch_size $patch_size \
+# --data_root $data_root --input_size $input_size \
+# --output_dir "$pre_output_dir" --log_dir "$pre_output_dir" \
+# --attack pgd_mae --steps 1 --eps 10 --alpha 8 \
+# --num_workers 16 \
+#  --use_normalize \
+# --mi_train hsic --mi_xpl 0.00001 
 
 
 # Finetune
 
-mkdir -p $ft_output_dir
+# mkdir -p $ft_output_dir
 
-python -m torch.distributed.launch --master_port $m_port --nproc_per_node=$num_gpu finetune.py \
+CUDA_VISIBLE_DEVICES=0 python finetune.py \
  --finetune "$finetune_checkpoint" \
  --model "$vit_model" \
  --output_dir "$ft_output_dir" \
@@ -78,4 +82,4 @@ python -m torch.distributed.launch --master_port $m_port --nproc_per_node=$num_g
  --patch_size $patch_size --input_size $input_size \
  --attack_train pgd \
  --use_normalize \
- --num_workers 16 > "${ft_output_dir}/printlog" 2>&1
+ --num_workers 16 
