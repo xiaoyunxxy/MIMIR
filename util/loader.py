@@ -15,8 +15,48 @@ from pgd_mae import pgd_mae, pgd
 from autoattack import AutoAttack
 from util.data import load_data, load_set
 
+import models.mae_vit as mae_vit
+import models.mae_convit as mae_convit
+
+import models.models_vit as models_vit
+import models.models_convit as models_convit
+
+
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
+
+def pre_model_loader(args):
+    if args.model.startswith('mae_vit'):
+        model = models_mae.__dict__[args.model](
+            norm_pix_loss=args.norm_pix_loss,
+            img_size=args.input_size,
+            patch_size=args.patch_size)
+    elif args.model.startswith('mae_convit'):
+        model = mae_convit.__dict__[args.model](
+            norm_pix_loss=args.norm_pix_loss,
+            img_size=args.input_size,
+            patch_size=args.patch_size)
+
+    return model
+
+def ft_model_loader(args):
+    if args.model.startswith('vit'):
+        model = models_vit.__dict__[args.model](
+                num_classes=args.nb_classes,
+                drop_path_rate=args.drop_path,
+                global_pool=args.global_pool,
+                img_size=args.input_size,
+                patch_size=args.patch_size)
+    elif args.model.startswith('convit'):
+        model = models_convit.__dict__[args.model](
+                num_classes=args.nb_classes,
+                drop_path_rate=args.drop_path,
+                global_pool=args.global_pool,
+                img_size=args.input_size,
+                patch_size=args.patch_size)
+
+    return model
+
 
 def dataset_transforms(args, is_train):
 
