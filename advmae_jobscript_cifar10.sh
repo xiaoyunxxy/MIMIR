@@ -1,10 +1,10 @@
 #!/bin/bash -e
-#SBATCH --job-name preft_c_edm
+#SBATCH --job-name ft_edmvit
 #SBATCH --partition=icis
 #SBATCH --account=icis
 #SBATCH --qos=icis-preempt
 #SBATCH --mem=150G
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=64
 #SBATCH --time=24:00:00
 #SBATCH --output=./slurm_log/my-experiment-%j.out
@@ -17,9 +17,9 @@
 
 
 # Hyper parameters
-num_gpu=1
-mae_model=mae_vit_small
-vit_model=vit_small
+num_gpu=4
+mae_model=mae_convit_small
+vit_model=convit_small
 
 dataset=cifar10
 nb_classes=10
@@ -33,33 +33,16 @@ ft_batchsize=32
 pre_blr=1.5e-4
 ft_blr=0.05
 
-# pre_output_dir=./experiment/${mae_model}_${dataset}_adv_fast_hsicpretrain_nor
-# finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
-# ft_output_dir=./experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain_nor
-
-pre_output_dir=./experiment/test_pre
-finetune_checkpoint=$pre_output_dir/checkpoint-0.pth
-ft_output_dir=./experiment/test_ft
+pre_output_dir=./experiment/${mae_model}_${dataset}_adv_fast_hsicpretrain
+finetune_checkpoint=$pre_output_dir/checkpoint-799.pth
+ft_output_dir=./experiment/${mae_model}_${dataset}_advfinetune_with_adv_fast_hsicpretrain
 
 m_port=1239
 
 # Pretrain
 
-# mkdir -p $pre_output_dir
+mkdir -p $pre_output_dir
 
-# CUDA_VISIBLE_DEVICES=0 python pretrain.py \
-# --batch_size $pre_batchsize \
-# --model $mae_model \
-# --norm_pix_loss --mask_ratio 0.75 \
-# --epochs 800 --warmup_epochs 40 \
-# --blr $pre_blr --weight_decay 0.05 \
-# --dataset "$dataset" --patch_size $patch_size \
-# --data_root $data_root --input_size $input_size \
-# --output_dir "$pre_output_dir" --log_dir "$pre_output_dir" \
-# --attack pgd_mae --steps 1 --eps 10 --alpha 8 \
-# --num_workers 16 \
-#  --use_normalize \
-# --mi_train hsic --mi_xpl 0.00001 
 
 OMP_NUM_THREADS=2 python -m torch.distributed.launch --master_port $m_port --nproc_per_node=$num_gpu pretrain.py \
 --batch_size $pre_batchsize \
@@ -79,7 +62,7 @@ OMP_NUM_THREADS=2 python -m torch.distributed.launch --master_port $m_port --npr
 
 # mkdir -p $ft_output_dir
 
-CUDA_VISIBLE_DEVICES=O python finetune.py \
+OMP_NUM_THREADS=2 python -m torch.distributed.launch --master_port $m_port --nproc_per_node=$num_gpu finetune.py \
  --finetune "$finetune_checkpoint" \
  --model "$vit_model" \
  --output_dir "$ft_output_dir" \
@@ -95,5 +78,4 @@ CUDA_VISIBLE_DEVICES=O python finetune.py \
  --dataset "$dataset" --nb_classes $nb_classes \
  --patch_size $patch_size --input_size $input_size \
  --attack_train pgd \
- --use_normalize \
- --num_workers 16 
+ --num_workers 0
