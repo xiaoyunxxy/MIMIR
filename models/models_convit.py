@@ -6,9 +6,9 @@ import torch.nn as nn
 from timm.layers import DropPath, trunc_normal_, PatchEmbed, Mlp, LayerNorm
 from timm.models.vision_transformer_hybrid import HybridEmbed
 from timm.models.convit import Block
+import timm.models.convit
 
-
-class ConVit(timm.models.vision_transformer.ConVit):
+class ConVit(timm.models.convit.ConVit):
     def __init__(self, global_pool=False, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
 
