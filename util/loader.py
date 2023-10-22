@@ -27,7 +27,7 @@ cifar10_std = (0.2471, 0.2435, 0.2616)
 
 def pre_model_loader(args):
     if args.model.startswith('mae_vit'):
-        model = models_mae.__dict__[args.model](
+        model = mae_vit.__dict__[args.model](
             norm_pix_loss=args.norm_pix_loss,
             img_size=args.input_size,
             patch_size=args.patch_size)

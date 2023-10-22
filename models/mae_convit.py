@@ -280,7 +280,7 @@ def mae_convit_tiny_dec128d2b(**kwargs):
         decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
         decoder_depth=smaller_decoder['decoder_depth'], 
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
-        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+        mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 def mae_convit_small_dec128d2b(**kwargs):
@@ -291,7 +291,7 @@ def mae_convit_small_dec128d2b(**kwargs):
         decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
         decoder_depth=smaller_decoder['decoder_depth'], 
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
-        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+        mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 def mae_convit_base_dec128d2b(**kwargs):
@@ -302,7 +302,7 @@ def mae_convit_base_dec128d2b(**kwargs):
         decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
         decoder_depth=smaller_decoder['decoder_depth'], 
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
-        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+        mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 

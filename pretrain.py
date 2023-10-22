@@ -23,7 +23,7 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import build_dataset, build_dataset_pre
+from util.loader import build_dataset, build_dataset_pre, pre_model_loader
 from pgd_mae import pgd_mae
 from util.data import load_data, load_set
 import models_mae
@@ -183,10 +183,7 @@ def main(args):
         )
     
     # define the model
-    model = models_mae.__dict__[args.model](
-        norm_pix_loss=args.norm_pix_loss,
-        img_size=args.input_size,
-        patch_size=args.patch_size)
+    model = pre_model_loader(args)
     model.to(device)
 
     model_without_ddp = model

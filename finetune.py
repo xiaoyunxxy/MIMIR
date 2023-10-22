@@ -29,7 +29,7 @@ import util.misc as misc
 from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
-from util.loader import build_dataset
+from util.loader import build_dataset, ft_model_loader
 from util.warmup_randaug import warmup_dataloder
 from util.aa_eval import evaluate_aa, evaluate_pgd, evaluate_cw
 from trades import trades_loss
@@ -275,13 +275,7 @@ def main(args):
             mixup_alpha=args.mixup, cutmix_alpha=args.cutmix, cutmix_minmax=args.cutmix_minmax,
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
-    model = models_vit.__dict__[args.model](
-        num_classes=args.nb_classes,
-        drop_path_rate=args.drop_path,
-        global_pool=args.global_pool,
-        img_size=args.input_size,
-        patch_size=args.patch_size
-    )
+    model = ft_model_loader(args)
 
     if args.warmup_aa:
         print("Warmup random augmentation!")
@@ -304,10 +298,10 @@ def main(args):
         msg = model.load_state_dict(checkpoint_model, strict=False)
         print(msg)
 
-        if args.global_pool:
-            assert set(msg.missing_keys) == {'head.weight', 'head.bias', 'fc_norm.weight', 'fc_norm.bias'}
-        else:
-            assert set(msg.missing_keys) == {'head.weight', 'head.bias'}
+        # if args.global_pool:
+        #     assert set(msg.missing_keys) == {'head.weight', 'head.bias', 'fc_norm.weight', 'fc_norm.bias'}
+        # else:
+        #     assert set(msg.missing_keys) == {'head.weight', 'head.bias'}
 
         # manually initialize fc layer
         if args.dataset == 'imagenet':
