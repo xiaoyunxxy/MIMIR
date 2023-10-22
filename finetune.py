@@ -457,8 +457,8 @@ def main(args):
 
 
     # define attacks for adversarial evaluation
-    test_stats = evaluate(data_loader_val, model, device)
-    print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
+    # test_stats = evaluate(data_loader_val, model, device)
+    # print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
 
     # # pgd 
     evaluate_pgd(args, model, device, eval_steps=20)
