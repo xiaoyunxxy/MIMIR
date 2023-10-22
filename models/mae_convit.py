@@ -100,7 +100,7 @@ class MaskedAutoencoderConVit(nn.Module):
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches, decoder_embed_dim), requires_grad=False)  # fixed sin-cos embedding
 
-        if self.use_convit_dec
+        if self.use_convit_dec:
             self.decoder_blocks = nn.ModuleList([
                 Block(dim=decoder_embed_dim, 
                     num_heads=decoder_num_heads, 
