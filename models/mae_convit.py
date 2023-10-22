@@ -40,7 +40,7 @@ class MaskedAutoencoderConVit(nn.Module):
             decoder_depth=8, 
             decoder_num_heads=16,
             norm_pix_loss=False,
-            use_convit_dec=False):
+            use_convit_dec=True):
         super().__init__()
         assert global_pool in ('', 'avg', 'token')
         embed_dim *= num_heads
