@@ -6,6 +6,7 @@ from autoattack import AutoAttack
 import torchattacks
 import util.misc as misc
 from timm.utils import accuracy
+import PIL
 
 # installing AutoAttack by: pip install git+https://github.com/fra31/auto-attack
 
@@ -79,29 +80,32 @@ def evaluate_aa(args, model, log_path):
     l = [y for (x, y) in test_loader_nonorm]
     y_test = torch.cat(l, 0)
 
-    new_model = normalize_model(model, args.dataset)
-    adversary = AutoAttack(new_model, norm='Linf', eps=8/255, version='standard',log_path=log_path)
+    if args.use_normalize:
+        model = normalize_model(model, args.dataset)
+    adversary = AutoAttack(model, norm='Linf', eps=args.eps, version='standard',log_path=log_path)
     X_adv = adversary.run_standard_evaluation(x_test, y_test, bs=args.batch_size)
 
 
 def evaluate_pgd(args, model, device, eval_steps=10):
     test_loader_nonorm = no_nor_loader(args)
-    new_model = normalize_model(model, args.dataset)
+    if args.use_normalize:
+        model = normalize_model(model, args.dataset)
 
-    attack = torchattacks.PGD(new_model, eps=8/255,
-                            alpha=2/255, steps=eval_steps, random_start=True)
+    attack = torchattacks.PGD(model, eps=args.eps,
+                            alpha=args.alpha, steps=eval_steps, random_start=True)
     header='PGD {} Test:'.format(eval_steps)
-    test_stats = evaluate_adv(attack, test_loader_nonorm, new_model, device, header)
+    test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
     print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
 
 def evaluate_cw(args, model, device, eval_steps=20):
     test_loader_nonorm = no_nor_loader(args)
-    new_model = normalize_model(model, args.dataset)
+    if args.use_normalize:
+        model = normalize_model(model, args.dataset)
 
-    attack = torchattacks.CW(model=new_model, lr=0.1, steps=eval_steps)
+    attack = torchattacks.CW(model=model, lr=0.05, steps=eval_steps)
     attack.device = device
     header='CW {} Test:'.format(eval_steps)
-    test_stats = evaluate_adv(attack, test_loader_nonorm, new_model, device, header)
+    test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
     print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
 
 def evaluate_adv(attack, data_loader, model, device, header='ADV Test:'):
