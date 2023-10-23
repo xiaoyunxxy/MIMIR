@@ -41,8 +41,6 @@ from util.data import get_data_info
 from util.data import load_data, load_set
 from util.data import SEMISUP_DATASETS
 
-import models_vit
-
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
@@ -292,7 +290,8 @@ def main(args):
                 del checkpoint_model[k]
 
         # interpolate position embedding
-        interpolate_pos_embed(model, checkpoint_model)
+        if args.model.startswith('vit'):
+            interpolate_pos_embed(model, checkpoint_model)
 
         # load pre-trained model
         msg = model.load_state_dict(checkpoint_model, strict=False)
@@ -462,7 +461,7 @@ def main(args):
 
     # auto attack eval
     print('eval auto attack.')
-    at_path = os.path.join(os.path.dirname(args.output_dir), 'eval'+'_autoattack.txt')
+    at_path = os.path.join(args.output_dir, 'eval'+'_autoattack.txt')
     evaluate_aa(args, model, at_path)
 
 

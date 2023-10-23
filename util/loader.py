@@ -51,7 +51,6 @@ def ft_model_loader(args):
         model = models_convit.__dict__[args.model](
                 num_classes=args.nb_classes,
                 drop_path_rate=args.drop_path,
-                global_pool=args.global_pool,
                 img_size=args.input_size,
                 patch_size=args.patch_size)
 
@@ -111,17 +110,31 @@ def dataset_transforms(args, is_train):
             std=std)
     else:
         if args.use_normalize:
-            transform_train = transforms.Compose(
-                [transforms.RandomCrop(args.input_size, padding=4),
-                 transforms.RandomHorizontalFlip(),
-                 transforms.ToTensor(),
-                 transforms.Normalize(mean, std)]
-            )
+            if args.dataset=='imagenet' or args.dataset=='imagenette':
+                transform_train = transforms.Compose([
+                    transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD)])
+            else: 
+                transform_train = transforms.Compose(
+                    [transforms.RandomCrop(args.input_size, padding=4),
+                     transforms.RandomHorizontalFlip(),
+                     transforms.ToTensor(),
+                     transforms.Normalize(mean, std)]
+                )
         else:
-            transform_train = transforms.Compose(
-                [transforms.RandomCrop(args.input_size, padding=4),
-                 transforms.RandomHorizontalFlip(),
-                 transforms.ToTensor()])
+            # not using normalization 
+            if args.dataset=='imagenet':
+                transform_train = transforms.Compose([
+                    transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor()])
+            else:
+                transform_train = transforms.Compose(
+                    [transforms.RandomCrop(args.input_size, padding=4),
+                     transforms.RandomHorizontalFlip(),
+                     transforms.ToTensor()])
     t = []
     if args.input_size <= 224:
         crop_pct = 224 / 256

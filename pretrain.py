@@ -26,7 +26,6 @@ import util.lr_sched as lr_sched
 from util.loader import build_dataset, build_dataset_pre, pre_model_loader
 from pgd_mae import pgd_mae
 from util.data import load_data, load_set
-import models_mae
 
 # MI methods
 from MI.hsic import hsic_normalized_cca
