@@ -18,10 +18,12 @@ from util.data import load_data, load_set
 import models.mae_vit as mae_vit
 import models.mae_convit as mae_convit
 import models.mae_cait as mae_cait
+import models.swin_modeling.model_factory as mae_swin
 
 import models.models_vit as models_vit
 import models.models_convit as models_convit
 import models.models_cait as models_cait
+import models.swin_transformer as swin_transformer
 
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
@@ -42,6 +44,10 @@ def pre_model_loader(args):
             norm_pix_loss=args.norm_pix_loss,
             img_size=args.input_size,
             patch_size=args.patch_size)
+    elif args.model.startswith('mae_swin'):
+        model = mae_swin.__dict__[args.model](
+            norm_pix_loss=args.norm_pix_loss,
+            img_size=args.input_size)
 
     return model
 
@@ -65,6 +71,11 @@ def ft_model_loader(args):
             drop_path_rate=args.drop_path,
             img_size=args.input_size,
             patch_size=args.patch_size)
+    elif args.model.startswith('swin'):
+        model = swin_transformer.__dict__[args.model](
+            num_classes=args.nb_classes,
+            drop_path_rate=args.drop_path,
+            img_size=args.input_size)
 
     return model
 

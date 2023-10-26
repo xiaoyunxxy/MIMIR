@@ -42,7 +42,7 @@ def green_mim_swin_tiny_patch4_dec512b1(**kwargs):
         norm_layer=partial(nn.LayerNorm, eps=1e-6))
     model = MaskedAutoencoder(   
         encoder,
-        embed_dim=1024,
+        embed_dim=768,
         patch_size=32,
         in_chans=3,
         # common configs
@@ -67,7 +67,7 @@ def green_mim_swin_small_patch4_dec512b1(**kwargs):
         img_size=224,
         patch_size=4,
         in_chans=3,
-        embed_dim=128,
+        embed_dim=768,
         depths=[2, 2, 18, 2],
         num_heads=[3, 6, 12, 24],
         window_size=7,
@@ -254,3 +254,8 @@ def green_mim_twins_large_patch4_dec512b1(**kwargs):
         decoder_num_heads=16,
         **kwargs)
     return model
+
+
+mae_swin_tiny = green_mim_swin_tiny_patch4_dec512b1
+mae_swin_small = green_mim_swin_small_patch4_dec512b1
+mae_swin_base = green_mim_swin_base_patch4_dec512b1
