@@ -96,7 +96,7 @@ def load_data(train_dataset, test_dataset, dataset=None, batch_size=256, batch_s
             )
     else:
         #pin_memory = torch.cuda.is_available()
-        pin_memory = False
+        pin_memory = True
         train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
                                                        num_workers=num_workers, pin_memory=pin_memory)
         test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size_test, shuffle=False, 

@@ -18,12 +18,15 @@ def get_semisup_dataloaders(train_dataset, test_dataset, val_dataset=None, batch
     epoch_size = len(train_batch_sampler) * batch_size
 
     # kwargs = {'num_workers': num_workers, 'pin_memory': torch.cuda.is_available() }
-    kwargs = {'num_workers': num_workers, 'pin_memory': False}    
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_sampler=train_batch_sampler, **kwargs)
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size_test, shuffle=False, **kwargs)
+    kwargs = {'num_workers': num_workers, 'pin_memory': True}
+    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_sampler=train_batch_sampler,
+        persistent_workers=True if kwargs['num_workers'] > 0 else False, **kwargs)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size_test, shuffle=False, 
+        persistent_workers=True if kwargs['num_workers'] > 0 else False, **kwargs)
     
     if val_dataset:
-        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size_test, shuffle=False, **kwargs)
+        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size_test, 
+            persistent_workers=True if kwargs['num_workers'] > 0 else False, **kwargs)
         return train_dataloader, test_dataloader, val_dataloader
     return train_dataloader, test_dataloader
 
