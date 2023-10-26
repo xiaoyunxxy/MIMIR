@@ -331,13 +331,16 @@ def main(args):
 
         args.eps /= std
         args.alpha /= std
+
+        attack = pgd.PGD(model, eps=args.eps,
+        alpha=args.alpha, steps=args.steps, random_start=True,
+        upper_limit=upper_limit, lower_limit=lower_limit)
     else:
         upper_limit = 1.0
         lower_limit = 0.0
 
-    attack = pgd.PGD(model, eps=args.eps,
-        alpha=args.alpha, steps=args.steps, random_start=True,
-        upper_limit=upper_limit, lower_limit=lower_limit)
+        attack = torchattacks.PGD(model, eps=args.eps,
+            alpha=args.alpha, steps=args.steps, random_start=True)
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -388,9 +391,9 @@ def main(args):
         evaluate_pgd(args, model, device, eval_steps=args.steps)
 
         # # cw 
-        evaluate_cw(args, model, device, eval_steps=args.steps)
+        # evaluate_cw(args, model, device, eval_steps=args.steps)
 
-        # auto attack eval
+        # # auto attack eval
         print('eval auto attack.')
         at_path = os.path.join(os.path.dirname(args.resume), 'eval'+'_autoattack.txt')
         evaluate_aa(args, model, at_path)

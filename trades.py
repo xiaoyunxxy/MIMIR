@@ -14,7 +14,7 @@ def l2_norm(x):
     return squared_l2_norm(x).sqrt()
 
 
-def clamp(self, X, upper_limit, lower_limit):
+def clamp(X, upper_limit, lower_limit):
         return torch.max(torch.min(X, upper_limit), lower_limit)
 
 
@@ -40,7 +40,7 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
             x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
             x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
-            x_adv = clamp(x_adv, lower_limit, upper_limit)
+            x_adv = clamp(x_adv, upper_limit, lower_limit)
     
     elif distance == 'l2-pgd':
         delta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
@@ -67,14 +67,14 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
 
             # projection
             delta.data.add_(x_natural)
-            delta.data.clamp_(0, 1).sub_(x_natural)
+            delta.data.clamp_(upper_limit, lower_limit).sub_(x_natural)
             delta.data.renorm_(p=2, dim=0, maxnorm=epsilon)
         x_adv = Variable(x_natural + delta, requires_grad=False)
     else:
         raise ValueError(f'Attack={distance} not supported for TRADES training!')
     model.train()
 
-    x_adv = Variable(clamp(x_adv, lower_limit, upper_limit), requires_grad=False)
+    x_adv = Variable(clamp(x_adv, upper_limit, lower_limit), requires_grad=False)
     
     optimizer.zero_grad()
     # calculate robust loss

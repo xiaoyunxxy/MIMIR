@@ -6,6 +6,7 @@ from autoattack import AutoAttack
 import torchattacks
 import util.misc as misc
 from timm.utils import accuracy
+from pgd_mae import pgd
 import PIL
 
 # installing AutoAttack by: pip install git+https://github.com/fra31/auto-attack
@@ -82,6 +83,7 @@ def evaluate_aa(args, model, log_path):
 
     if args.use_normalize:
         model = normalize_model(model, args.dataset)
+        args.eps = args.max().item()
     adversary = AutoAttack(model, norm='Linf', eps=args.eps, version='standard',log_path=log_path)
     X_adv = adversary.run_standard_evaluation(x_test, y_test, bs=args.batch_size)
 
@@ -91,8 +93,28 @@ def evaluate_pgd(args, model, device, eval_steps=10):
     if args.use_normalize:
         model = normalize_model(model, args.dataset)
 
-    attack = torchattacks.PGD(model, eps=args.eps,
-                            alpha=args.alpha, steps=eval_steps, random_start=True)
+    if args.use_normalize:
+        if args.dataset=='imagenet':
+            mu = torch.tensor(imagenet_mean).view(3, 1, 1).to(device)
+            std = torch.tensor(imagenet_std).view(3, 1, 1).to(device)
+            upper_limit = ((1 - mu) / std)
+            lower_limit = ((0 - mu) / std)
+        elif args.dataset=='cifar10' or args.dataset=='cifar10s':
+            cifar10_mean = (0.4914, 0.4822, 0.4465)
+            cifar10_std = (0.2471, 0.2435, 0.2616)
+            mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
+            std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
+            upper_limit = ((1 - mu) / std)
+            lower_limit = ((0 - mu) / std)
+        else:
+            print('check dataset option.')
+
+        attack = pgd.PGD(model, eps=args.eps,
+            alpha=args.alpha, steps=args.steps, random_start=True,
+            upper_limit=upper_limit, lower_limit=lower_limit)
+    else:
+        attack = torchattacks.PGD(model, eps=args.eps,
+                                alpha=args.alpha, steps=eval_steps, random_start=True)
     header='PGD {} Test:'.format(eval_steps)
     test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
     print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
