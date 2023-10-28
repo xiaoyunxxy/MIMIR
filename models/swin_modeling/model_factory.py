@@ -21,6 +21,14 @@ def get_pretrain_model(model_str, norm_pix_loss=True):
     return model
 
 
+smaller_decoder = {
+    'decoder_embed_dim': 128,
+    'decoder_depth': 2,
+    'decoder_num_heads': 16
+}
+
+
+
 # Swin Transformers
 def green_mim_swin_tiny_patch4_dec512b1(**kwargs):
     encoder = SwinTransformer(
@@ -54,9 +62,9 @@ def green_mim_swin_tiny_patch4_dec512b1(**kwargs):
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         # decoder settings
         decoder_num_patches=49,
-        decoder_embed_dim=512,
-        decoder_depth=1,
-        decoder_num_heads=16,
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
         **kwargs)
     return model
 
@@ -94,9 +102,9 @@ def green_mim_swin_small_patch4_dec512b1(**kwargs):
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         # decoder settings
         decoder_num_patches=49,
-        decoder_embed_dim=512,
-        decoder_depth=1,
-        decoder_num_heads=16,
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
         **kwargs)
     return model
 
@@ -134,9 +142,9 @@ def green_mim_swin_base_patch4_dec512b1(**kwargs):
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         # decoder settings
         decoder_num_patches=49,
-        decoder_embed_dim=512,
-        decoder_depth=1,
-        decoder_num_heads=16,
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
         **kwargs)
     return model
 
