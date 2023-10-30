@@ -24,7 +24,7 @@ def no_nor_loader(args):
         ])
         test_dataset_nonorm = datasets.CIFAR10(args.data_root, 
             train=False, transform=test_transform_nonorm, download=True)
-    if args.dataset=="imagenette" or args.dataset=="imagenet" :
+    elif args.dataset=="imagenette" or args.dataset=="imagenet" :
         t = []
         if args.input_size <= 224:
             crop_pct = 224 / 256
@@ -39,6 +39,11 @@ def no_nor_loader(args):
 
         test_transform_nonorm = transforms.Compose(t)
         test_dataset_nonorm = datasets.ImageFolder(args.data_root+'/val',test_transform_nonorm)
+    elif args.dataset=="tiny-imagenet":
+        test_transform_nonorm = transforms.Compose([
+            transforms.ToTensor()
+        ])
+        test_dataset_nonorm = datasets.ImageFolder(args.data_root + '/tiny-imagenet-200/val', transform=test_transform_nonorm)
 
     test_loader_nonorm = torch.utils.data.DataLoader(
         dataset=test_dataset_nonorm,
@@ -53,7 +58,7 @@ def normalize(data_set, X):
     if data_set=="cifar10":
         mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
         std = torch.tensor(cifar10_std).view(3, 1, 1).cuda()
-    elif data_set=="imagenette" or data_set=="imagenet" :
+    elif data_set=="imagenette" or data_set=="imagenet" or data_set=="tiny-imagenet":
         mu = torch.tensor(imagenet_mean).view(3, 1, 1).cuda()
         std = torch.tensor(imagenet_std).view(3, 1, 1).cuda()
     return (X - mu) / std
@@ -94,7 +99,7 @@ def evaluate_pgd(args, model, device, eval_steps=10):
         model = normalize_model(model, args.dataset)
 
     if args.use_normalize:
-        if args.dataset=='imagenet':
+        if args.dataset=='imagenet' or args.dataset=='tiny-imagenet':
             mu = torch.tensor(imagenet_mean).view(3, 1, 1).to(device)
             std = torch.tensor(imagenet_std).view(3, 1, 1).to(device)
             upper_limit = ((1 - mu) / std)
