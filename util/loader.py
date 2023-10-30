@@ -218,7 +218,7 @@ def build_dataset(args, is_train):
             args.dataset = "cifar10"
             return dataset_train, dataset_test
         elif args.dataset == "tiny-imagenets":
-            dataset_train, dataset_test = load_set(args.dataset_s, args.data_root, batch_size=args.batch_size, batch_size_test=128, 
+            dataset_train, dataset_test = load_set(args.dataset_s, args.data_root+'/tiny-imagenet-200/', batch_size=args.batch_size, batch_size_test=128, 
             num_workers=args.num_workers, aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction, use_augmentation='randaugment', args=args)
             args.dataset = "tiny-imagenet"
             return dataset_train, dataset_test
