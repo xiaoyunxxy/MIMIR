@@ -40,7 +40,7 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
             x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
             x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
-            x_adv = clamp(x_adv, upper_limit, lower_limit)
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
     
     elif distance == 'l2-pgd':
         delta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
@@ -74,7 +74,7 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
         raise ValueError(f'Attack={distance} not supported for TRADES training!')
     model.train()
 
-    x_adv = Variable(clamp(x_adv, upper_limit, lower_limit), requires_grad=False)
+    x_adv = Variable(torch.clamp(x_adv, 0.0, 1.0), requires_grad=False)
     
     optimizer.zero_grad()
     # calculate robust loss
