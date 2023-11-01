@@ -178,7 +178,7 @@ def main(args):
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
             drop_last=True,
-            persistent_workers=True
+            persistent_workers=True if args.num_workers>0 else False
         )
     
     # define the model

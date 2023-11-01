@@ -47,7 +47,8 @@ class MaskedAutoencoderCait(nn.Module):
             decoder_embed_dim=512, 
             decoder_depth=8, 
             decoder_num_heads=16,
-            norm_pix_loss=False
+            norm_pix_loss=False,
+            use_cait_block=True
     ):
         super().__init__()
         assert global_pool in ('', 'token', 'avg')
@@ -56,6 +57,7 @@ class MaskedAutoencoderCait(nn.Module):
         self.global_pool = global_pool
         self.num_features = self.embed_dim = embed_dim
         self.grad_checkpointing = False
+        self.use_cait_block = use_cait_block
 
         self.patch_embed = patch_layer(
             img_size=img_size,
@@ -108,9 +110,26 @@ class MaskedAutoencoderCait(nn.Module):
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches, decoder_embed_dim), requires_grad=False)  # fixed sin-cos embedding
 
-        self.decoder_blocks = nn.ModuleList([
-            Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
-            for i in range(decoder_depth)])
+        if self.use_cait_block:
+            de_dpr = [drop_path_rate for i in range(decoder_depth)]
+            self.decoder_blocks = nn.Sequential(*[block_layers(
+                dim=decoder_embed_dim,
+                num_heads=decoder_num_heads,
+                mlp_ratio=mlp_ratio,
+                qkv_bias=qkv_bias,
+                proj_drop=proj_drop_rate,
+                attn_drop=attn_drop_rate,
+                drop_path=de_dpr[i],
+                norm_layer=norm_layer,
+                act_layer=act_layer,
+                attn_block=attn_block,
+                mlp_block=mlp_block,
+                init_values=init_values,
+            ) for i in range(decoder_depth)])
+        else:
+            self.decoder_blocks = nn.ModuleList([
+                Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
+                for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
         self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
@@ -184,8 +203,9 @@ class MaskedAutoencoderCait(nn.Module):
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
 
         # apply Transformer blocks
-        for blk in self.decoder_blocks:
-            x = blk(x)
+        # for blk in self.decoder_blocks:
+        #     x = blk(x)
+        x = self.decoder_blocks(x)
         x = self.decoder_norm(x)
 
         # predictor projection

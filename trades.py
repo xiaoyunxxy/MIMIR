@@ -14,35 +14,32 @@ def l2_norm(x):
     return squared_l2_norm(x).sqrt()
 
 
-def clamp(X, upper_limit, lower_limit):
-        return torch.max(torch.min(X, upper_limit), lower_limit)
-
-
-def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, perturb_steps=10, beta=1.0, 
-                distance='linf-pgd', upper_limit=1.0, lower_limit=0.0):
-    """
-    TRADES training (Zhang et al, 2019).
-    """
-  
+def trades_loss(model,
+                x_natural,
+                y,
+                optimizer,
+                step_size=0.003,
+                epsilon=0.031,
+                perturb_steps=10,
+                beta=1.0,
+                distance='l_inf'):
     # define KL-loss
-    criterion_kl = nn.KLDivLoss(reduction='sum')
+    criterion_kl = nn.KLDivLoss(size_average=False)
     model.eval()
     batch_size = len(x_natural)
     # generate adversarial example
     x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
-    p_natural = F.softmax(model(x_natural), dim=1)
-    
-    if distance == 'linf-pgd':
+    if distance == 'l_inf':
         for _ in range(perturb_steps):
             x_adv.requires_grad_()
             with torch.enable_grad():
-                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1), p_natural)
+                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                       F.softmax(model(x_natural), dim=1))
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
             x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
             x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
             x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    
-    elif distance == 'l2-pgd':
+    elif distance == 'l_2':
         delta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
         delta = Variable(delta.data, requires_grad=True)
 
@@ -55,8 +52,9 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
             # optimize
             optimizer_delta.zero_grad()
             with torch.enable_grad():
-                loss = (-1) * criterion_kl(F.log_softmax(model(adv), dim=1), p_natural)
-            loss.backward(retain_graph=True)
+                loss = (-1) * criterion_kl(F.log_softmax(model(adv), dim=1),
+                                           F.softmax(model(x_natural), dim=1))
+            loss.backward()
             # renorming gradient
             grad_norms = delta.grad.view(batch_size, -1).norm(p=2, dim=1)
             delta.grad.div_(grad_norms.view(-1, 1, 1, 1))
@@ -67,21 +65,20 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
 
             # projection
             delta.data.add_(x_natural)
-            delta.data.clamp_(upper_limit, lower_limit).sub_(x_natural)
+            delta.data.clamp_(0, 1).sub_(x_natural)
             delta.data.renorm_(p=2, dim=0, maxnorm=epsilon)
         x_adv = Variable(x_natural + delta, requires_grad=False)
     else:
-        raise ValueError(f'Attack={distance} not supported for TRADES training!')
+        x_adv = torch.clamp(x_adv, 0.0, 1.0)
     model.train()
 
     x_adv = Variable(torch.clamp(x_adv, 0.0, 1.0), requires_grad=False)
-    
+    # zero gradient
     optimizer.zero_grad()
     # calculate robust loss
-    logits_natural = model(x_natural)
-    logits_adv = model(x_adv)
-    loss_natural = F.cross_entropy(logits_natural, y)
-    loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(logits_adv, dim=1),
-                                                    F.softmax(logits_natural, dim=1))
-    loss = loss_natural + beta * loss_robust   
+    logits = model(x_natural)
+    loss_natural = F.cross_entropy(logits, y)
+    loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                                    F.softmax(model(x_natural), dim=1))
+    loss = loss_natural + beta * loss_robust
     return loss
