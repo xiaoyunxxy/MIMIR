@@ -81,16 +81,25 @@ class normalize_model():
 def evaluate_aa(args, model, log_path):
     test_loader_nonorm = no_nor_loader(args)
     model.eval()
-    l = [x for (x, y) in test_loader_nonorm]
-    x_test = torch.cat(l, 0)
-    l = [y for (x, y) in test_loader_nonorm]
-    y_test = torch.cat(l, 0)
 
     if args.use_normalize:
         model = normalize_model(model, args.dataset)
         args.eps = args.max().item()
-    adversary = AutoAttack(model, norm='Linf', eps=args.eps, version='standard',log_path=log_path)
-    X_adv = adversary.run_standard_evaluation(x_test, y_test, bs=args.batch_size)
+
+    if args.dataset=='imagenet':
+        attack = torchattacks.AutoAttack(model, norm="Linf", eps=args.eps, version="standard")
+        header='AA {} Test:'.format(eval_steps)
+        test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
+        print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
+    else:
+        # evaluate with original autoattack
+        l = [x for (x, y) in test_loader_nonorm]
+        x_test = torch.cat(l, 0)
+        l = [y for (x, y) in test_loader_nonorm]
+        y_test = torch.cat(l, 0)
+        
+        adversary = AutoAttack(model, norm='Linf', eps=args.eps, version='standard',log_path=log_path)
+        X_adv = adversary.run_standard_evaluation(x_test, y_test, bs=args.batch_size)
 
 
 def evaluate_pgd(args, model, device, eval_steps=10):

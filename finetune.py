@@ -387,14 +387,29 @@ def main(args):
         test_stats = evaluate(data_loader_val, model, device)
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
 
-        # # pgd 
-        evaluate_pgd(args, model, device, eval_steps=args.steps)
 
-        # # cw 
-        # evaluate_cw(args, model, device, eval_steps=args.steps)
+        # # pgd 5 eps 1 alpha 0.5, to compare with TORA and RVT
+        tmp_eps = args.eps
+        tem_alpha = args.alpha
+        args.eps = 1/255
+        args.alpha = 0.5/255
+        print('eps: ', args.eps, '  alpha: ', args.alpha)
+        evaluate_pgd(args, model, device, eval_steps=5)
+
+        args.eps = tmp_eps
+        args.alpha = tem_alpha
+
+        # # pgd 20
+        print('eps: ', args.eps, '  alpha: ', args.alpha)
+        evaluate_pgd(args, model, device, eval_steps=20)
+
+        # # pgd 100
+        print('eps: ', args.eps, '  alpha: ', args.alpha)
+        evaluate_pgd(args, model, device, eval_steps=100)
 
         # # auto attack eval
         print('eval auto attack.')
+        print('eps: ', args.eps, '  alpha: ', args.alpha)
         at_path = os.path.join(os.path.dirname(args.resume), 'eval'+'_autoattack.txt')
         evaluate_aa(args, model, at_path)
 
@@ -450,22 +465,6 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-
-
-    # define attacks for adversarial evaluation
-    # test_stats = evaluate(data_loader_val, model, device)
-    # print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
-
-    # # pgd 
-    evaluate_pgd(args, model, device, eval_steps=20)
-
-    # # cw 
-    # evaluate_cw(args, model, device, eval_steps=20)
-
-    # auto attack eval
-    print('eval auto attack.')
-    at_path = os.path.join(args.output_dir, 'eval'+'_autoattack.txt')
-    evaluate_aa(args, model, at_path)
 
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
