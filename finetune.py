@@ -303,7 +303,7 @@ def main(args):
         #     assert set(msg.missing_keys) == {'head.weight', 'head.bias'}
 
         # manually initialize fc layer
-        if args.dataset == 'imagenet' or args.model.startswith('cait'):
+        if args.dataset == 'imagenet':
             trunc_normal_(model.head.weight, std=2e-5)
         else:
             trunc_normal_(model.head.weight, std=2e-2)

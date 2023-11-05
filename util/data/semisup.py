@@ -73,6 +73,7 @@ class SemiSupervisedDataset(torch.utils.data.Dataset):
                 else:
                     # for data from Rebuffi et al, 2021.
                     aux = np.load(aux_path)
+                    print('np loaded. prepare aux_data.')
                     aux_data = aux['image']
                     print(aux_data.shape)
                     aux_targets = aux['label']
