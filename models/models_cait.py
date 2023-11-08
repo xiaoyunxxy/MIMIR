@@ -11,3 +11,7 @@ def cait_xxs24(**kwargs):
 def cait_xxs36(**kwargs):
     model = timm.models.cait.cait_xxs36_224(**kwargs)
     return model
+
+def cait_s36(**kwargs):
+    model = timm.models.cait.cait_s36_384(**kwargs)
+    return model
