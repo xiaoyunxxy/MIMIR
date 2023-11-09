@@ -231,6 +231,7 @@ def main(args):
                                 alpha=args.alpha, steps=args.steps, random_start=True,
                                 upper_limit=upper_limit, lower_limit=lower_limit)
     else:
+        print('plain mae pre-training.')
         attack = None
 
     if args.distributed:
@@ -367,10 +368,11 @@ def train_one_epoch(model: torch.nn.Module,
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.add_scalar('train_loss', loss_value_reduce, epoch_1000x)
             log_writer.add_scalar('lr', lr, epoch_1000x)
-            if args.mi_train=='hsic':
-                log_writer.add_scalar('mi', h_xp_l.item(), epoch_1000x)
-            elif args.mi_train=='dib_mi':
-                log_writer.add_scalar('mi', I_Xp_Z.item(), epoch_1000x)
+            if args.attack != 'plain':
+                if args.mi_train=='hsic':
+                    log_writer.add_scalar('mi', h_xp_l.item(), epoch_1000x)
+                elif args.mi_train=='dib_mi':
+                    log_writer.add_scalar('mi', I_Xp_Z.item(), epoch_1000x)
 
 
     # gather the stats from all processes
