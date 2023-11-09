@@ -506,7 +506,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             elif args.attack_train=='trades':
                 loss = trades_loss(model, samples, targets, optimizer, step_size=args.alpha, 
                                       epsilon=args.eps, perturb_steps=args.steps, 
-                                      beta=args.trades_beta, distance='linf-pgd')
+                                      beta=args.trades_beta, distance='l_inf')
             elif args.attack_train=='mart':
                 loss = mart_loss(model, samples, targets, optimizer, step_size=args.alpha, 
                                       epsilon=args.eps, perturb_steps=args.steps, 
