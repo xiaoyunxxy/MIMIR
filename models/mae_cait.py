@@ -317,9 +317,24 @@ smaller_decoder = {
     'decoder_num_heads': 16
 }
 
+
+model_args_xxs24_moreheads = dict(patch_size=16, embed_dim=192, depth=24, num_heads=12, init_values=1e-5)
+
 model_args_xxs24 = dict(patch_size=16, embed_dim=192, depth=24, num_heads=4, init_values=1e-5)
 model_args_xxs36 = dict(patch_size=16, embed_dim=192, depth=36, num_heads=4, init_values=1e-5)
 model_args_s36 = dict(patch_size=16, embed_dim=384, depth=36, num_heads=8, init_values=1e-6)
+
+def mae_cait_xxs24_mh_dec128d2b(**kwargs):
+    model = MaskedAutoencoderCait(
+        embed_dim=model_args_xxs24_moreheads['embed_dim'], 
+        depth=model_args_xxs24_moreheads['depth'], 
+        num_heads=model_args_xxs24_moreheads['num_heads'],
+        init_values=model_args_xxs24_moreheads['init_values'],
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
+        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
 def mae_cait_xxs24_dec128d2b(**kwargs):
     model = MaskedAutoencoderCait(
@@ -357,6 +372,7 @@ def mae_cait_s36_dec128d2b(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+mae_cait_xxs24_mh=mae_cait_xxs24_mh_dec128d2b
 mae_cait_xxs24=mae_cait_xxs24_dec128d2b
 mae_cait_xxs36=mae_cait_xxs36_dec128d2b
 mae_cait_s36=mae_cait_s36_dec128d2b
