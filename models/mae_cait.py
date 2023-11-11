@@ -48,7 +48,7 @@ class MaskedAutoencoderCait(nn.Module):
             decoder_depth=8, 
             decoder_num_heads=16,
             norm_pix_loss=False,
-            use_cait_block=True
+            use_cait_block=False
     ):
         super().__init__()
         assert global_pool in ('', 'token', 'avg')
@@ -127,6 +127,7 @@ class MaskedAutoencoderCait(nn.Module):
                 init_values=init_values,
             ) for i in range(decoder_depth)])
         else:
+            print('---- use vit block for decoder.')
             self.decoder_blocks = nn.ModuleList([
                 Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
                 for i in range(decoder_depth)])
@@ -204,9 +205,9 @@ class MaskedAutoencoderCait(nn.Module):
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
 
         # apply Transformer blocks
-        # for blk in self.decoder_blocks:
-        #     x = blk(x)
-        x = self.decoder_blocks(x)
+        for blk in self.decoder_blocks:
+            x = blk(x)
+        # x = self.decoder_blocks(x)
         x = self.decoder_norm(x)
 
         # predictor projection
@@ -317,6 +318,11 @@ smaller_decoder = {
     'decoder_num_heads': 16
 }
 
+lesshead_decoder = {
+    'decoder_embed_dim': 128,
+    'decoder_depth': 2,
+    'decoder_num_heads': 8
+}
 
 model_args_xxs24_moreheads = dict(patch_size=16, embed_dim=192, depth=24, num_heads=12, init_values=1e-5)
 
@@ -333,6 +339,18 @@ def mae_cait_xxs24_mh_dec128d2b(**kwargs):
         decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
         decoder_depth=smaller_decoder['decoder_depth'], 
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_cait_xxs24_dec128d2b_lesshead(**kwargs):
+    model = MaskedAutoencoderCait(
+        embed_dim=model_args_xxs24['embed_dim'], 
+        depth=model_args_xxs24['depth'], 
+        num_heads=model_args_xxs24['num_heads'],
+        init_values=model_args_xxs24['init_values'],
+        decoder_embed_dim=lesshead_decoder['decoder_embed_dim'], 
+        decoder_depth=lesshead_decoder['decoder_depth'], 
+        decoder_num_heads=lesshead_decoder['decoder_num_heads'],
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
@@ -372,6 +390,7 @@ def mae_cait_s36_dec128d2b(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+mae_cait_xxs24_lesshead=mae_cait_xxs24_dec128d2b_lesshead
 mae_cait_xxs24_mh=mae_cait_xxs24_mh_dec128d2b
 mae_cait_xxs24=mae_cait_xxs24_dec128d2b
 mae_cait_xxs36=mae_cait_xxs36_dec128d2b

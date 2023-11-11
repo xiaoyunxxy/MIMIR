@@ -1,5 +1,7 @@
 from timm.models.cait import Cait
 import timm.models.cait
+from functools import partial
+import torch.nn as nn
 
 model_args_xxs24_mh = dict(patch_size=16, embed_dim=192, depth=24, num_heads=12, init_values=1e-5)
 
