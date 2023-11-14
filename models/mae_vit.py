@@ -278,7 +278,7 @@ def mae_vit_base_dec128d2b(**kwargs):
 
 def mae_vit_large_dec128d2b(**kwargs):
     model = MaskedAutoencoderViT(
-        patch_size=16, embed_dim=1024, depth=24, num_heads=16,
+        embed_dim=1024, depth=24, num_heads=16,
         decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
         decoder_depth=smaller_decoder['decoder_depth'], 
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
