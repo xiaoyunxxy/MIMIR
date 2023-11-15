@@ -7,6 +7,8 @@ import torchattacks
 import util.misc as misc
 from timm.utils import accuracy
 from pgd_mae import pgd
+from adaptive_attack import pgd_feature
+from adaptive_attack import pgd_mi
 import PIL
 
 # installing AutoAttack by: pip install git+https://github.com/fra31/auto-attack
@@ -16,6 +18,7 @@ cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
 imagenet_mean = (0.485, 0.456, 0.406)
 imagenet_std = (0.229, 0.224, 0.225)
+
 
 def no_nor_loader(args):
     if args.dataset=="cifar10":
@@ -54,6 +57,7 @@ def no_nor_loader(args):
 
     return test_loader_nonorm
 
+
 def normalize(data_set, X):
     if data_set=="cifar10":
         mu = torch.tensor(cifar10_mean).view(3, 1, 1).cuda()
@@ -62,6 +66,7 @@ def normalize(data_set, X):
         mu = torch.tensor(imagenet_mean).view(3, 1, 1).cuda()
         std = torch.tensor(imagenet_std).view(3, 1, 1).cuda()
     return (X - mu) / std
+
 
 class normalize_model():
     def __init__(self, model, data_set):
@@ -77,6 +82,7 @@ class normalize_model():
         self.model_test.eval()
     def train(self):
         self.model_test.train()
+
 
 def evaluate_aa(args, model, log_path):
     test_loader_nonorm = no_nor_loader(args)
@@ -133,6 +139,7 @@ def evaluate_pgd(args, model, device, eval_steps=10):
     test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
     print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
 
+
 def evaluate_cw(args, model, device, eval_steps=20):
     test_loader_nonorm = no_nor_loader(args)
     if args.use_normalize:
@@ -143,6 +150,26 @@ def evaluate_cw(args, model, device, eval_steps=20):
     header='CW {} Test:'.format(eval_steps)
     test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
     print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
+
+def evaluate_pgdmi(args, model, device, eval_steps=10):
+    test_loader_nonorm = no_nor_loader(args)
+    attack = pgd_mi.PGD(model, eps=args.eps,
+                                alpha=args.alpha, steps=eval_steps, random_start=True)
+
+    header='PGD MI {} Test:'.format(eval_steps)
+    test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
+    print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
+
+
+def evaluate_pgdfeature(args, model, device, eval_steps=10):
+    test_loader_nonorm = no_nor_loader(args)
+    attack = pgd_feature.PGD(model, eps=args.eps,
+                                alpha=args.alpha, steps=eval_steps, random_start=True)
+
+    header='PGD Feature {} Test:'.format(eval_steps)
+    test_stats = evaluate_adv(attack, test_loader_nonorm, model, device, header)
+    print(f"Accuracy of the network on the {len(test_loader_nonorm)} test images: {test_stats['acc1']:.1f}%")
+
 
 def evaluate_adv(attack, data_loader, model, device, header='ADV Test:'):
     criterion = torch.nn.CrossEntropyLoss()

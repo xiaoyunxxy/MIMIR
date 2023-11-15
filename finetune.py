@@ -31,7 +31,7 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import util.lr_sched as lr_sched
 from util.loader import build_dataset, ft_model_loader
 from util.warmup_randaug import warmup_dataloder
-from util.aa_eval import evaluate_aa, evaluate_pgd, evaluate_cw
+from util.aa_eval import evaluate_aa, evaluate_pgd, evaluate_cw, evaluate_pgdmi, evaluate_pgdfeature
 from trades import trades_loss
 from mart import mart_loss
 from pgd_mae import pgd
@@ -182,6 +182,10 @@ def get_args_parser():
     parser.add_argument('--mi_xz', default=0.0001, type=float, help='regular for mi.')
     parser.add_argument('--mi_yz', default=0.001, type=float, help='regular for mi.')
     parser.add_argument('--mi_loss', default='plain', type=str, help='Use mutual information for training.')
+
+    # adaptive evaluation
+    parser.add_argument('--adap_eval', action='store_true', help='use adaptive evaluation or not.')
+    parser.set_defaults(adap_eval=False)
 
     return parser
 
@@ -387,6 +391,17 @@ def main(args):
         test_stats = evaluate(data_loader_val, model, device)
         print(f"Accuracy of the network on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
 
+
+        # pgd mi 20
+        if args.adap_eval:
+            print('---- Adaptive evaluation using PGD_MI and PGD_feature.')
+            print('eps: ', args.eps, '  alpha: ', args.alpha)
+            evaluate_pgdfeature(args, model, device, eval_steps=100)
+
+            print('eps: ', args.eps, '  alpha: ', args.alpha)
+            evaluate_pgdmi(args, model, device, eval_steps=100)
+
+            exit(0)
 
         # # pgd 5 eps 1 alpha 0.5, to compare with TORA and RVT
         tmp_eps = args.eps
