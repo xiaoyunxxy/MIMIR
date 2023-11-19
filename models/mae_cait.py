@@ -44,11 +44,11 @@ class MaskedAutoencoderCait(nn.Module):
             mlp_block_token_only=Mlp,
             depth_token_only=2,
             mlp_ratio_token_only=4.0,
-            decoder_embed_dim=512, 
-            decoder_depth=8, 
+            decoder_embed_dim=512,
+            decoder_depth=8,
             decoder_num_heads=16,
             norm_pix_loss=False,
-            use_cait_block=False
+            use_cait_block=True
     ):
         super().__init__()
         assert global_pool in ('', 'token', 'avg')
@@ -72,7 +72,7 @@ class MaskedAutoencoderCait(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
         self.pos_drop = nn.Dropout(p=pos_drop_rate)
 
-        dpr = [drop_path_rate for i in range(depth)]
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
         self.blocks = nn.Sequential(*[block_layers(
             dim=embed_dim,
             num_heads=num_heads,
@@ -173,12 +173,13 @@ class MaskedAutoencoderCait(nn.Module):
     def forward_encoder(self, x, mask_ratio):
         x = self.patch_embed(x)
         x = x + self.pos_embed
-        x = self.pos_drop(x)
+        
 
         # masking: length -> length * mask_ratio
         x, mask, ids_restore = self.random_masking(x, mask_ratio)
 
-        
+        # x = self.pos_drop(x)
+
         if self.grad_checkpointing and not torch.jit.is_scripting():
             x = checkpoint_seq(self.blocks, x)
         else:
@@ -186,6 +187,7 @@ class MaskedAutoencoderCait(nn.Module):
         cls_tokens = self.cls_token.expand(x.shape[0], -1, -1)
         for i, blk in enumerate(self.blocks_token_only):
             cls_tokens = blk(x, cls_tokens)
+            
         x = torch.cat((cls_tokens, x), dim=1)
         x = self.norm(x)
         return x, mask, ids_restore
@@ -198,14 +200,13 @@ class MaskedAutoencoderCait(nn.Module):
         mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
         x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
         x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
-        
+
         # add pos embed
         x_ = x_ + self.decoder_pos_embed
-
-        x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
+        x = torch.cat([x[:, :1, :], x_], dim=1)
 
         # apply Transformer blocks
-        for blk in self.decoder_blocks:
+        for u, blk in enumerate(self.decoder_blocks):
             x = blk(x)
         # x = self.decoder_blocks(x)
         x = self.decoder_norm(x)
@@ -213,7 +214,7 @@ class MaskedAutoencoderCait(nn.Module):
         # predictor projection
         x = self.decoder_pred(x)
 
-        # remove cls token
+        # # remove cls token
         x = x[:, 1:, :]
 
         return x
@@ -222,7 +223,7 @@ class MaskedAutoencoderCait(nn.Module):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
-        mask: [N, L], 0 is keep, 1 is remove, 
+        mask: [N, L], 0 is keep, 1 is remove,
         """
         target = self.patchify(imgs)
         if self.norm_pix_loss:
@@ -278,7 +279,7 @@ class MaskedAutoencoderCait(nn.Module):
         p = self.patch_embed.patch_size[0]
         h = w = int(x.shape[1]**.5)
         assert h * w == x.shape[1]
-        
+
         x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
         x = torch.einsum('nhwpqc->nchpwq', x)
         imgs = x.reshape(shape=(x.shape[0], 3, h * p, h * p))
@@ -292,9 +293,9 @@ class MaskedAutoencoderCait(nn.Module):
         """
         N, L, D = x.shape  # batch, length, dim
         len_keep = int(L * (1 - mask_ratio))
-        
+
         noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
-        
+
         # sort noise for each sample
         ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
         ids_restore = torch.argsort(ids_shuffle, dim=1)
@@ -318,11 +319,6 @@ smaller_decoder = {
     'decoder_num_heads': 16
 }
 
-lesshead_decoder = {
-    'decoder_embed_dim': 128,
-    'decoder_depth': 2,
-    'decoder_num_heads': 8
-}
 
 model_args_xxs24_moreheads = dict(patch_size=16, embed_dim=192, depth=24, num_heads=12, init_values=1e-5)
 
@@ -332,67 +328,66 @@ model_args_s36 = dict(patch_size=16, embed_dim=384, depth=36, num_heads=8, init_
 
 def mae_cait_xxs24_mh_dec128d2b(**kwargs):
     model = MaskedAutoencoderCait(
-        embed_dim=model_args_xxs24_moreheads['embed_dim'], 
-        depth=model_args_xxs24_moreheads['depth'], 
+        embed_dim=model_args_xxs24_moreheads['embed_dim'],
+        depth=model_args_xxs24_moreheads['depth'],
         num_heads=model_args_xxs24_moreheads['num_heads'],
         init_values=model_args_xxs24_moreheads['init_values'],
-        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
-        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
-def mae_cait_xxs24_dec128d2b_lesshead(**kwargs):
+def mae_cait_xxs24_dec128d2b_12layers(**kwargs):
     model = MaskedAutoencoderCait(
-        embed_dim=model_args_xxs24['embed_dim'], 
-        depth=model_args_xxs24['depth'], 
-        num_heads=model_args_xxs24['num_heads'],
+        embed_dim=384,
+        depth=12,
+        num_heads=6,
         init_values=model_args_xxs24['init_values'],
-        decoder_embed_dim=lesshead_decoder['decoder_embed_dim'], 
-        decoder_depth=lesshead_decoder['decoder_depth'], 
-        decoder_num_heads=lesshead_decoder['decoder_num_heads'],
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
+        decoder_num_heads=smaller_decoder['decoder_num_heads'],
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 def mae_cait_xxs24_dec128d2b(**kwargs):
     model = MaskedAutoencoderCait(
-        embed_dim=model_args_xxs24['embed_dim'], 
-        depth=model_args_xxs24['depth'], 
+        embed_dim=model_args_xxs24['embed_dim'],
+        depth=model_args_xxs24['depth'],
         num_heads=model_args_xxs24['num_heads'],
         init_values=model_args_xxs24['init_values'],
-        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
-        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 def mae_cait_xxs36_dec128d2b(**kwargs):
     model = MaskedAutoencoderCait(
-        embed_dim=model_args_xxs36['embed_dim'], 
-        depth=model_args_xxs36['depth'], 
+        embed_dim=model_args_xxs36['embed_dim'],
+        depth=model_args_xxs36['depth'],
         num_heads=model_args_xxs36['num_heads'],
         init_values=model_args_xxs36['init_values'],
-        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
-        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 def mae_cait_s36_dec128d2b(**kwargs):
     model = MaskedAutoencoderCait(
-        embed_dim=model_args_s36['embed_dim'], 
-        depth=model_args_s36['depth'], 
+        embed_dim=model_args_s36['embed_dim'],
+        depth=model_args_s36['depth'],
         num_heads=model_args_s36['num_heads'],
         init_values=model_args_s36['init_values'],
-        decoder_embed_dim=smaller_decoder['decoder_embed_dim'], 
-        decoder_depth=smaller_decoder['decoder_depth'], 
+        decoder_embed_dim=smaller_decoder['decoder_embed_dim'],
+        decoder_depth=smaller_decoder['decoder_depth'],
         decoder_num_heads=smaller_decoder['decoder_num_heads'],
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
-mae_cait_xxs24_lesshead=mae_cait_xxs24_dec128d2b_lesshead
+mae_cait_xxs24_12layer=mae_cait_xxs24_dec128d2b_12layers
 mae_cait_xxs24_mh=mae_cait_xxs24_mh_dec128d2b
 mae_cait_xxs24=mae_cait_xxs24_dec128d2b
 mae_cait_xxs36=mae_cait_xxs36_dec128d2b
 mae_cait_s36=mae_cait_s36_dec128d2b
-

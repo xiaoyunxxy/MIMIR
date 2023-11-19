@@ -19,11 +19,13 @@ import models.mae_vit as mae_vit
 import models.mae_convit as mae_convit
 import models.mae_cait as mae_cait
 import models.swin_modeling.model_factory as mae_swin
+import models.mae_xcit as mae_xcit
 
 import models.models_vit as models_vit
 import models.models_convit as models_convit
 import models.models_cait as models_cait
 import models.swin_transformer as swin_transformer
+import models.models_xcit as models_xcit
 
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
@@ -43,9 +45,14 @@ def pre_model_loader(args):
         model = mae_cait.__dict__[args.model](
             norm_pix_loss=args.norm_pix_loss,
             img_size=args.input_size,
+            global_pool='avg',
             patch_size=args.patch_size)
     elif args.model.startswith('mae_swin'):
         model = mae_swin.__dict__[args.model](
+            norm_pix_loss=args.norm_pix_loss,
+            img_size=args.input_size)
+    elif args.model.startswith('mae_xcit'):
+        model = mae_xcit.__dict__[args.model](
             norm_pix_loss=args.norm_pix_loss,
             img_size=args.input_size)
 
@@ -73,6 +80,11 @@ def ft_model_loader(args):
             patch_size=args.patch_size)
     elif args.model.startswith('swin'):
         model = swin_transformer.__dict__[args.model](
+            num_classes=args.nb_classes,
+            drop_path_rate=args.drop_path,
+            img_size=args.input_size)
+    elif args.model.startswith('xcit'):
+        model = models_xcit.__dict__[args.model](
             num_classes=args.nb_classes,
             drop_path_rate=args.drop_path,
             img_size=args.input_size)
@@ -126,7 +138,24 @@ def dataset_transforms(args, is_train):
 
     if not args.use_normalize:
         if args.dataset=='imagenet':
-            transform_train = transforms.Compose([
+            if args.aa!='noaug':
+                # data augmentation transform
+                print('use auto_augment: ', args.aa)
+                mean = (0.0, 0.0, 0.0)
+                std = (1.0, 1.0, 1.0)
+                transform_train = create_transform(
+                    input_size=args.input_size,
+                    is_training=True,
+                    color_jitter=args.color_jitter,
+                    auto_augment=args.aa,
+                    interpolation='bicubic',
+                    re_prob=args.reprob,
+                    re_mode=args.remode,
+                    re_count=args.recount,
+                    mean=mean,
+                    std=std)
+            else:
+                transform_train = transforms.Compose([
                 transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor()])
