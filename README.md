@@ -1,1 +1,1 @@
-# repo for paper: Boosting Adversarial Robustness by Adversarial Pre-training
+# repo for paper: MIMIR: Masked Image Modeling for Mutual Information Based Adversarial Robustness
