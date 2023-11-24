@@ -26,3 +26,16 @@
 |  ----  | ----  | ----  | ----  |
 |  ViT-S | 71.29 | 40.98 | [Link](https://drive.google.com/drive/folders/1c42Y_1pdC5iRTyv66P6tEehetuh-r1v9?usp=drive_link) |
 |  ViT-B | 73.22 | 41.26 | [Link](https://drive.google.com/drive/folders/1YMP5Mk3mBcdg8y2A1e0nmu3XHOtdKwHg?usp=drive_link) |
+
+
+## Pre-train checkpoints
+|  Dataset | Model | CheckPoint |
+|  ----  | ----  | ---- |
+| CIFAR-10 |  ViT-T | [Link]()  |
+| CIFAR-10 |  ViT-S | [Link]()  |
+| CIFAR-10 |  ViT-B | [Link]()  |
+| CIFAR-10 |  ConViT-T | [Link]()  |
+| CIFAR-10 |  ConViT-S | [Link]()  |
+| CIFAR-10 |  ConViT-B | [Link]()  |
+| ImageNet-1K |  ViT-S | [Link]()  |
+| ImageNet-1K |  ViT-B | [Link]()  |
