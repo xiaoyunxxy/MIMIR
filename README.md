@@ -9,8 +9,8 @@ pip install git+https://github.com/fra31/auto-attack
 ## Evaluation and Training Commands
 check ./script
 
-# Checkpoints
-## CIFAR-10
+## Checkpoints
+### CIFAR-10
 
 |  Model | Natural | AA | CheckPoint |
 |  ----  | ----  | ----  | ----  |
@@ -22,21 +22,21 @@ check ./script
 |  ConViT-B | 89.30 | 55.64 | [Link](https://drive.google.com/drive/folders/1Loyoy8GvS1mxmK7QrKLkyci0QrSkakQ4?usp=drive_link) |
 
 
-## ImageNet-1K
+### ImageNet-1K
 ### eps 2
 |  Model | Natural | PGD 20 | CheckPoint |
 |  ----  | ----  | ----  | ----  |
 |  ViT-S | 74.60 | 54.56 | [Link](https://drive.google.com/drive/folders/1wSG3J1JwZccMhiAigMpD9KoHzEKxY9xr?usp=drive_link) |
 |  ViT-B | 75.88 | 55.42 | [Link](https://drive.google.com/drive/folders/1BgDoMPnq7M5Y34mgHdBX1WoNsZGLJR1W?usp=drive_link) |
 
-### eps 4
+#### eps 4
 |  Model | Natural | PGD 20 | CheckPoint |
 |  ----  | ----  | ----  | ----  |
 |  ViT-S | 71.29 | 40.98 | [Link](https://drive.google.com/drive/folders/1c42Y_1pdC5iRTyv66P6tEehetuh-r1v9?usp=drive_link) |
 |  ViT-B | 73.22 | 41.26 | [Link](https://drive.google.com/drive/folders/1YMP5Mk3mBcdg8y2A1e0nmu3XHOtdKwHg?usp=drive_link) |
 
 
-## Pre-train checkpoints
+### MIMIR Pre-train checkpoints
 |  Dataset | Model | CheckPoint |
 |  ----  | ----  | ---- |
 | CIFAR-10 |  ViT-T | [Link](https://drive.google.com/drive/folders/1ogRUP_vKRnG9XvTwB0xLqVBf3Ag3Sk-f?usp=drive_link)  |
