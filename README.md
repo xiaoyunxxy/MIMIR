@@ -1,7 +1,15 @@
 # MIMIR: Masked Image Modeling for Mutual Information Based Adversarial Robustness
 
+## Environment settings
+check requirements.txt
 
+## Install AutoAttack
+pip install git+https://github.com/fra31/auto-attack
 
+## Evaluation and Training Commands
+check ./script
+
+# Checkpoints
 ## CIFAR-10
 
 |  Model | Natural | AA | CheckPoint |
