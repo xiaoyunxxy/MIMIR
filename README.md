@@ -14,3 +14,7 @@
 |  ConViT-B | 89.30 | 55.64 | [Link](https://drive.google.com/drive/folders/1Loyoy8GvS1mxmK7QrKLkyci0QrSkakQ4?usp=drive_link) |
 
 
+## ImageNet-1K
+### eps 2
+|  Model | Natural | PGD_{20} | CheckPoint |
+|  ----  | ----  | ----  | ----  |
