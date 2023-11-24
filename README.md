@@ -31,11 +31,11 @@
 ## Pre-train checkpoints
 |  Dataset | Model | CheckPoint |
 |  ----  | ----  | ---- |
-| CIFAR-10 |  ViT-T | [Link]()  |
-| CIFAR-10 |  ViT-S | [Link]()  |
-| CIFAR-10 |  ViT-B | [Link]()  |
-| CIFAR-10 |  ConViT-T | [Link]()  |
-| CIFAR-10 |  ConViT-S | [Link]()  |
-| CIFAR-10 |  ConViT-B | [Link]()  |
-| ImageNet-1K |  ViT-S | [Link]()  |
-| ImageNet-1K |  ViT-B | [Link]()  |
+| CIFAR-10 |  ViT-T | [Link](https://drive.google.com/drive/folders/1ogRUP_vKRnG9XvTwB0xLqVBf3Ag3Sk-f?usp=drive_link)  |
+| CIFAR-10 |  ViT-S | [Link](https://drive.google.com/drive/folders/1DLWuUH1egDU3axXz9Gx2yEFmnE0JBzBX?usp=drive_link)  |
+| CIFAR-10 |  ViT-B | [Link](https://drive.google.com/drive/folders/1WI1b6N_tP23INFvrAOYdTc8bd6aROsg8?usp=drive_link)  |
+| CIFAR-10 |  ConViT-T | [Link](https://drive.google.com/drive/folders/1YvQz2QUcc1Z9weg9FHk-fTQG9qwSEhWR?usp=drive_link)  |
+| CIFAR-10 |  ConViT-S | [Link](https://drive.google.com/drive/folders/1LGz5YoBnnm32z3y6pT_dUM9cHzQBLL-2?usp=drive_link)  |
+| CIFAR-10 |  ConViT-B | [Link](https://drive.google.com/drive/folders/1mJekoZw2imovMP7fhGoApfQ6uOlGvYWT?usp=drive_link)  |
+| ImageNet-1K |  ViT-S | [Link](https://drive.google.com/drive/folders/1eXPQxNwJXyBknb42sq1yT7hCj31SjqTS?usp=drive_link)  |
+| ImageNet-1K |  ViT-B | [Link](https://drive.google.com/drive/folders/1nUTPSelq18h3k7xe9CBv6yx8CHHYPotM?usp=drive_link)  |
