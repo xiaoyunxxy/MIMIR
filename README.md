@@ -16,13 +16,13 @@
 
 ## ImageNet-1K
 ### eps 2
-|  Model | Natural | PGD $_{20}$ | CheckPoint |
+|  Model | Natural | PGD 20 | CheckPoint |
 |  ----  | ----  | ----  | ----  |
-|  ViT-S |  |  | [Link]() |
-|  ViT-B |  |  | [Link]() |
+|  ViT-S | 74.60 | 54.56 | [Link](https://drive.google.com/drive/folders/1wSG3J1JwZccMhiAigMpD9KoHzEKxY9xr?usp=drive_link) |
+|  ViT-B | 75.88 | 55.42 | [Link](https://drive.google.com/drive/folders/1BgDoMPnq7M5Y34mgHdBX1WoNsZGLJR1W?usp=drive_link) |
 
 ### eps 4
-|  Model | Natural | PGD$_{20}$ | CheckPoint |
+|  Model | Natural | PGD 20 | CheckPoint |
 |  ----  | ----  | ----  | ----  |
-|  ViT-S |  |  | [Link]() |
-|  ViT-B |  |  | [Link]() |
+|  ViT-S | 71.29 | 40.98 | [Link](https://drive.google.com/drive/folders/1c42Y_1pdC5iRTyv66P6tEehetuh-r1v9?usp=drive_link) |
+|  ViT-B | 73.22 | 41.26 | [Link](https://drive.google.com/drive/folders/1YMP5Mk3mBcdg8y2A1e0nmu3XHOtdKwHg?usp=drive_link) |
