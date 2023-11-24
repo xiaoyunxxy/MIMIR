@@ -16,7 +16,7 @@
 
 ## ImageNet-1K
 ### eps 2
-|  Model | Natural | PGD$_{20}$ | CheckPoint |
+|  Model | Natural | PGD $_{20}$ | CheckPoint |
 |  ----  | ----  | ----  | ----  |
 |  ViT-S |  |  | [Link]() |
 |  ViT-B |  |  | [Link]() |
