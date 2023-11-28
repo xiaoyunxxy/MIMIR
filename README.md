@@ -47,3 +47,11 @@ check ./script
 | CIFAR-10 |  ConViT-B | [Link](https://drive.google.com/drive/folders/1mJekoZw2imovMP7fhGoApfQ6uOlGvYWT?usp=drive_link)  |
 | ImageNet-1K |  ViT-S | [Link](https://drive.google.com/drive/folders/1eXPQxNwJXyBknb42sq1yT7hCj31SjqTS?usp=drive_link)  |
 | ImageNet-1K |  ViT-B | [Link](https://drive.google.com/drive/folders/1nUTPSelq18h3k7xe9CBv6yx8CHHYPotM?usp=drive_link)  |
+
+
+## Acknowlegements
+This repository is built upon the following repositories:
+https://github.com/facebookresearch/mae
+https://github.com/wzekai99/DM-Improves-AT
+https://github.com/yuxi120407/DIB
+https://github.com/choasma/HSIC-bottleneck
