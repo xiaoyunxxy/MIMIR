@@ -51,7 +51,11 @@ check ./script
 
 ## Acknowlegements
 This repository is built upon the following repositories:
+
 https://github.com/facebookresearch/mae
+
 https://github.com/wzekai99/DM-Improves-AT
+
 https://github.com/yuxi120407/DIB
+
 https://github.com/choasma/HSIC-bottleneck
