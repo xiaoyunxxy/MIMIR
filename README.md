@@ -28,8 +28,8 @@ check ./script
 |  ----  | ----  | ----  | ----  |
 |  ViT-S | 74.60 | 54.56 | [Link](https://drive.google.com/drive/folders/1wSG3J1JwZccMhiAigMpD9KoHzEKxY9xr?usp=drive_link) |
 |  ViT-B | 75.88 | 55.42 | [Link](https://drive.google.com/drive/folders/1BgDoMPnq7M5Y34mgHdBX1WoNsZGLJR1W?usp=drive_link) |
-|  CaiT-XXS24 | 73.39 | 53.39 | - |
-|  CaiT-S36 | 76.05 |  56.78 | - |
+|  CaiT-XXS24 | 73.39 | 53.39 | [Link](https://drive.google.com/drive/folders/1uvlEZPFXRmgNbgrfcB8iD8MYQAlMAOS-?usp=drive_link) |
+|  CaiT-S36 | 76.05 |  56.78 | [Link](https://drive.google.com/drive/folders/1Cp0jms2yjiWSsRly5ysX86WQSQb0-jyG?usp=drive_link) |
 
 
 #### eps 4
@@ -37,8 +37,8 @@ check ./script
 |  ----  | ----  | ----  | ----  |
 |  ViT-S | 71.29 | 40.98 | [Link](https://drive.google.com/drive/folders/1c42Y_1pdC5iRTyv66P6tEehetuh-r1v9?usp=drive_link) |
 |  ViT-B | 73.22 | 41.26 | [Link](https://drive.google.com/drive/folders/1YMP5Mk3mBcdg8y2A1e0nmu3XHOtdKwHg?usp=drive_link) |
-|  CaiT-XXS24 | 69.90 | 40.53 | - |
-|  CaiT-S36 |  73.57 | 40.03 | - |
+|  CaiT-XXS24 | 69.90 | 40.53 | [Link](https://drive.google.com/drive/folders/1RX8dAz1LS_mTEhbUf2XUtCkPX4mlZ-xf?usp=drive_link) |
+|  CaiT-S36 |  73.57 | 40.03 | [Link](https://drive.google.com/drive/folders/1cTzN6GqreuRiYDYfsOW-jw-LPzgURFDt?usp=drive_link) |
 
 ### MIMIR Pre-train checkpoints
 |  Dataset | Model | CheckPoint |
@@ -51,6 +51,8 @@ check ./script
 | CIFAR-10 |  ConViT-B | [Link](https://drive.google.com/drive/folders/1mJekoZw2imovMP7fhGoApfQ6uOlGvYWT?usp=drive_link)  |
 | ImageNet-1K |  ViT-S | [Link](https://drive.google.com/drive/folders/1eXPQxNwJXyBknb42sq1yT7hCj31SjqTS?usp=drive_link)  |
 | ImageNet-1K |  ViT-B | [Link](https://drive.google.com/drive/folders/1nUTPSelq18h3k7xe9CBv6yx8CHHYPotM?usp=drive_link)  |
+| ImageNet-1K | CaiT-XXS24 | [Link](https://drive.google.com/drive/folders/1-Y-4UQoTFZmYmHHaQu99GdYIVLWpuPM5?usp=drive_link) |
+| ImageNet-1K | CaiT-S36 | [Link](https://drive.google.com/drive/folders/1Xkx0_qriQIAlEi1mEEwGfny1gMb8raUm?usp=drive_link) |
 
 
 ## Acknowlegements
