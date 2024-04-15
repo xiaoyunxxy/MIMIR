@@ -61,7 +61,7 @@ python -m torch.distributed.launch --master_port $m_port --nproc_per_node=$num_g
  --dataset "$dataset" --nb_classes $nb_classes \
  --patch_size $patch_size --input_size $input_size \
  --attack_train pgd --eps 8 --alpha 2 --steps 10 \
- --use_edm --aux_data_filename e$dm_data \
+ --use_edm --aux_data_filename $edm_data \
  --num_workers 0 > "${ft_output_dir}/printlog"
 
 
