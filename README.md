@@ -10,8 +10,16 @@ pip install git+https://github.com/fra31/auto-attack
 check ./script
 
 ## Checkpoints
-### CIFAR-10
 
+### MIMIR + more advanced fine-tuning (2-step APGD adversarial training) for SOTA performance on ImageNet-1K
+### eps 4
+|  Model | Natural | AA | CheckPoint |
+|  ----  | ----  | ----  | ----  |
+|  ViT-S | 71.00 | 46.10 | [Link](https://drive.google.com/file/d/1GOqjNsRQMzME17WGgHk3JA8ZugUFeTlf/view?usp=sharing)|
+|  ViT-B | 76.32 | 54.28 | [Link](https://drive.google.com/file/d/1o4PEm9fnxq_zeje1CXI1Lkkzw4WHEhqV/view?usp=sharing) |
+
+### CIFAR-10
+### eps 8
 |  Model | Natural | AA | CheckPoint |
 |  ----  | ----  | ----  | ----  |
 |  ViT-T | 84.82 | 52.96 | [Link](https://drive.google.com/drive/folders/1i40L0tK4UY16DVXljZV2X2fo2PniwsBV?usp=drive_link) |
