@@ -11,7 +11,7 @@ check ./script
 
 ## Checkpoints
 
-### MIMIR + more advanced fine-tuning (2-step APGD adversarial training) for SOTA performance on ImageNet-1K
+### MIMIR + more advanced fine-tuning (2-step APGD adversarial training, 300 epochs) for SOTA performance on ImageNet-1K
 ### eps 4
 |  Model | Natural | AA | CheckPoint |
 |  ----  | ----  | ----  | ----  |
