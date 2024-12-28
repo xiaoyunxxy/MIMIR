@@ -11,6 +11,15 @@ check ./script
 
 ## Checkpoints
 
+### MIMIR + 3 step PGD on swin models (implemented using ARES, see pgd_AT_ares)
+
+
+|  Model | Natural | AA | CheckPoint |
+|  ----  | ----  | ----  | ----  |
+|  Swin-base  | 76.62  | 55.90  |[Link](https://drive.google.com/file/d/1OKrTFxgLSTOgIUM6OaYUwJjNbkSw6WkM/view?usp=drive_link) |
+|  Swin-large  | 78.62  | 59.68  | [Link](https://drive.google.com/file/d/12VKW72JUVAG46qi6IH6DkgcuTgF3iznO/view?usp=drive_link)|
+
+
 ### MIMIR + more advanced fine-tuning (2-step APGD adversarial training, 300 epochs) for SOTA performance on ImageNet-1K
 ### eps 4
 |  Model | Natural | AA | CheckPoint |
@@ -61,6 +70,8 @@ check ./script
 | ImageNet-1K |  ViT-B | [Link](https://drive.google.com/drive/folders/1nUTPSelq18h3k7xe9CBv6yx8CHHYPotM?usp=drive_link)  |
 | ImageNet-1K | CaiT-XXS24 | [Link](https://drive.google.com/drive/folders/1-Y-4UQoTFZmYmHHaQu99GdYIVLWpuPM5?usp=drive_link) |
 | ImageNet-1K | CaiT-S36 | [Link](https://drive.google.com/drive/folders/1Xkx0_qriQIAlEi1mEEwGfny1gMb8raUm?usp=drive_link) |
+| ImageNet-1K | Swin-base|[Link](https://drive.google.com/file/d/1XycMEDr9EYnmotwSJKWv0ZlpWv_zEfS8/view?usp=drive_link)|
+| ImageNet-1K | Swin-large|[Link](https://drive.google.com/file/d/1Gt2JZXGuffNOrwHEe1WfVlaP9BMUanQ7/view?usp=drive_link)|
 
 
 ## Acknowlegements
@@ -77,3 +88,6 @@ https://github.com/yuxi120407/DIB
 
 
 https://github.com/choasma/HSIC-bottleneck
+
+
+https://github.com/thu-ml/ares
