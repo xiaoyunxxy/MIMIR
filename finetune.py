@@ -139,6 +139,8 @@ def get_args_parser():
     parser.add_argument('--unsup-fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
     parser.add_argument('--aux_data_filename', type=str, help='Path to additional Tiny Images data.', 
                         default='/data/xuxx/edm_data/1m.npz')
+    parser.add_argument('--edm_aug', type=str, help='EDM data augmentation', 
+                        default='base')
 
     parser.add_argument('--output_dir', default='./output_dir',
                         help='path where to save, empty for no saving')

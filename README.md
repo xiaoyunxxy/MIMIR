@@ -33,7 +33,9 @@ check ./script
 |  ----  | ----  | ----  | ----  |
 |  ViT-T | 84.82 | 52.96 | [Link](https://drive.google.com/drive/folders/1i40L0tK4UY16DVXljZV2X2fo2PniwsBV?usp=drive_link) |
 |  ViT-S | 88.11 | 53.18 | [Link](https://drive.google.com/drive/folders/1C-5I-Gmt3AQA6dIcQ_285LNUHO0m6sZ-?usp=drive_link) |
+|  ViT-S (5m edmdata, 100 ft epoch) | 91.94 | 61.06 | [Link](https://drive.google.com/file/d/1FkT5xijDuDdfupY6g0OQXAj3T8QYfPvp/view?usp=drive_link) |
 |  ViT-B | 89.30 | 54.55 | [Link](https://drive.google.com/drive/folders/1yjki5ICIH-vNsSx8RGkKinUhWE6SNp1m?usp=drive_link) |
+|  ViT-B (5m edmdata, 100 ft epoch)| 92.82 | 63.43 | [Link](https://drive.google.com/file/d/1UBrhye2GjD_uY1M3tF78vUNlFwRm5UCh/view?usp=drive_link) |
 |  ConViT-T | 80.74 | 45.04 | [Link](https://drive.google.com/drive/folders/14gHxaT_fn94quZagNv-TR8WTuEvRh39D?usp=drive_link) |
 |  ConViT-S | 87.49 | 52.54 | [Link](https://drive.google.com/drive/folders/1YEluyokNSP1kO_Yxs-cPI5HMe4UJJsJq?usp=drive_link) |
 |  ConViT-B | 89.30 | 55.64 | [Link](https://drive.google.com/drive/folders/1Loyoy8GvS1mxmK7QrKLkyci0QrSkakQ4?usp=drive_link) |

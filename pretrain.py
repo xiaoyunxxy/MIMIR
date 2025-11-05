@@ -80,6 +80,8 @@ def get_args_parser():
     parser.add_argument('--unsup_fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
     parser.add_argument('--aux_data_filename', type=str, help='Path to additional Tiny Images data.', 
                         default='/data/xuxx/edm_data/1m.npz')
+    parser.add_argument('--edm_aug', type=str, help='EDM data augmentation', 
+                        default='base')
     parser.add_argument('--use_normalize', action='store_true',
                         help='Use normalized data for training.')
     parser.set_defaults(use_normalize=False)

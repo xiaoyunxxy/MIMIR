@@ -17,20 +17,18 @@ from timm.optim import create_optimizer_v2, optimizer_kwargs
 from timm.utils import ModelEmaV2, distribute_bn, reduce_tensor, dispatch_clip_grad, get_outdir, CheckpointSaver, update_summary
 from timm.data.distributed_sampler import OrderedDistributedSampler
 
-
 import sys 
 sys.path.append("..") 
 # robust training functions
-from ares.utils.dist import distributed_init, random_seed
-from ares.utils.logger import setup_logger
-from ares.utils.model import build_model
-from ares.utils.loss import build_loss, resolve_amp, build_loss_scaler
-from ares.utils.dataset import build_dataset
-from ares.utils.adv import adv_generator
-from ares.utils.metrics import AverageMeter, accuracy
+from utils.dist import distributed_init, random_seed
+from utils.logger import setup_logger
+from utils.model import build_model
+from utils.loss import build_loss, resolve_amp, build_loss_scaler
+from utils.dataset import build_dataset
+from utils.adv import adv_generator
+from utils.metrics import AverageMeter, accuracy
 
 from imagenet5000_eval.loaders import CustomImageFolder
-
 
 
 def get_args_parser():
@@ -219,7 +217,7 @@ def get_args_parser():
                     help='how many batches to wait before logging training status')
     parser.add_argument('--recovery-interval', type=int, default=0, metavar='N',
                     help='how many batches to wait before writing recovery checkpoint')
-    parser.add_argument('--max-history', type=int, default=50, help='how many recovery checkpoints')
+    parser.add_argument('--max-history', type=int, default=10, help='how many recovery checkpoints')
     parser.add_argument('--num-workers', type=int, default=4, metavar='N',
                         help='how many training processes to use (default: 4)')
     parser.add_argument('--output-dir', default='',
