@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Iterable, Optional
 import math
-
+import sys
 
 import torch
 import torch.nn.functional as F
@@ -40,6 +40,10 @@ from pgd_mae import pgd
 from util.data import get_data_info
 from util.data import load_data, load_set
 from util.data import SEMISUP_DATASETS
+
+# MI methods
+from MI.hsic import hsic_normalized_cca
+from MI.DIB_MI import calculate_MI, HSIC
 
 
 def get_args_parser():
@@ -181,8 +185,8 @@ def get_args_parser():
                         help='url used to set up distributed training')
 
     # IB hyper parameter
-    parser.add_argument('--mi_xz', default=0.0001, type=float, help='regular for mi.')
-    parser.add_argument('--mi_yz', default=0.001, type=float, help='regular for mi.')
+    parser.add_argument('--mi_xz', default=0.00001, type=float, help='regular for mi.')
+    parser.add_argument('--mi_yz', default=0.0001, type=float, help='regular for mi.')
     parser.add_argument('--mi_loss', default='plain', type=str, help='Use mutual information for training.')
 
     # adaptive evaluation
@@ -420,15 +424,15 @@ def main(args):
         print('eps: ', args.eps, '  alpha: ', args.alpha)
         evaluate_pgd(args, model, device, eval_steps=20)
 
-        # # pgd 100
+        # pgd 100
         print('eps: ', args.eps, '  alpha: ', args.alpha)
         evaluate_pgd(args, model, device, eval_steps=100)
 
-        # # auto attack eval
+        # auto attack eval
         print('eval auto attack.')
         print('eps: ', args.eps, '  alpha: ', args.alpha)
         at_path = os.path.join(os.path.dirname(args.resume), 'eval'+'_autoattack.txt')
-        evaluate_aa(args, model, at_path)
+        evaluate_aa(args, model, at_path, device)
 
         exit(0)
 
@@ -453,7 +457,7 @@ def main(args):
             attack_pgd=attack,
             args=args
         )
-        if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs or epoch == 49):
+        if args.output_dir and (epoch % 1 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
@@ -504,7 +508,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 
     for data_iter_step, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
@@ -518,7 +521,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         with torch.cuda.amp.autocast():
             if args.attack_train=='pgd':
                 adv_samples = attack_pgd(samples, targets)
-                outputs = model(adv_samples)
+                outputs, latent = model(adv_samples, with_feature=True)
                 loss = criterion(outputs, targets)
             elif args.attack_train=='trades':
                 loss = trades_loss(model, samples, targets, optimizer, step_size=args.alpha, 
@@ -535,23 +538,62 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             else:
                 raise NotImplementedError("attack_train not implemented!")
 
-            if args.mi_loss=='dib_mi':
-                latent = model.record
+            if args.attack_train=='pgd' and args.mi_loss=='dib_mi':
+
                 with torch.no_grad():
                     Z = latent.view(latent.shape[0], -1)
                     sigma_z = torch.sort(torch.cdist(Z,Z,p=2))[0][0:10].mean()
 
-                    inputs = samples.view(samples.shape[0], -1)
+                    inputs = adv_samples.view(adv_samples.shape[0], -1)
                     sigma_input = torch.sort(torch.cdist(inputs, inputs,p=2))[0][0:10].mean()
 
                     outputs = outputs.view(outputs.shape[0], -1)
                     sigma_output = torch.sort(torch.cdist(outputs, outputs,p=2))[0][0:10].mean()
 
-                IXZ = calculate_MI(inputs, Z, s_x=sigma_input, s_y=sigma_z)
+                IXZ = calculate_MI(adv_samples, Z, s_x=sigma_input, s_y=sigma_z)
                 IYZ = calculate_MI(outputs, Z, s_x=sigma_output, s_y=sigma_z)
                 mi_loss = args.mi_xz * IXZ - args.mi_yz * IYZ
 
-                loss += mi_loss
+                if math.isfinite(mi_loss) and (IXZ!=0 or IYZ!=0):
+                    loss += mi_loss
+
+            elif args.attack_train=='pgd' and args.mi_loss=='hsic_mi':
+                intermediates = [latent.view(latent.shape[0], -1)]
+                h_target = torch.nn.functional.one_hot(targets)
+                h_data = adv_samples.view(adv_samples.shape[0], -1)
+                for t_index in range(len(intermediates)):
+                    intermediates[t_index] = intermediates[t_index].view(intermediates[t_index].shape[0], -1)
+
+                    IXZ, IYZ = hsic_objective(
+                        intermediates[t_index],
+                        h_target=h_target.float(),
+                        h_data=h_data,
+                        sigma=5
+                        )
+
+                hsic_loss = args.mi_xz * IXZ - args.mi_yz * IYZ
+
+                if math.isfinite(hsic_loss) and (IXZ!=0 or IYZ!=0):
+                    loss += hsic_loss
+                else:
+                    print('MI loss nan or 0.')
+            elif args.attack_train=='pgd' and args.mi_loss=='plain':
+                intermediates = [latent]
+                h_target = torch.nn.functional.one_hot(targets)
+                h_data = samples.view(samples.shape[0], -1)
+                for t_index in range(len(intermediates)):
+                    intermediates[t_index] = intermediates[t_index].view(intermediates[t_index].shape[0], -1)
+
+                    IXZ, IYZ = hsic_objective(
+                        intermediates[t_index],
+                        h_target=h_target.float(),
+                        h_data=h_data,
+                        sigma=5
+                        )
+                # pass
+            else:
+                IXZ, IYZ = 0, 0
+
 
         loss_value = loss.item()
 
@@ -569,6 +611,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         torch.cuda.synchronize()
 
         metric_logger.update(loss=loss_value)
+        metric_logger.update(IXZ=IXZ.item())
+        metric_logger.update(IYZ=IYZ.item())
+
         min_lr = 10.
         max_lr = 0.
         for group in optimizer.param_groups:
@@ -585,11 +630,20 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
             log_writer.add_scalar('lr', max_lr, epoch_1000x)
+            log_writer.add_scalar('IXZ', IXZ.item(), epoch_1000x)
+            log_writer.add_scalar('IYZ', IYZ.item(), epoch_1000x)
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+
+def hsic_objective(hidden, h_target, h_data, sigma, k_type_y='gaussian'):
+    hsic_hy_val = hsic_normalized_cca( hidden, h_target, sigma=sigma, k_type_y=k_type_y)
+    hsic_hx_val = hsic_normalized_cca( hidden, h_data,   sigma=sigma)
+
+    return hsic_hx_val, hsic_hy_val
 
 
 @torch.no_grad()
